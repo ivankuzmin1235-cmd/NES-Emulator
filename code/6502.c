@@ -168,7 +168,15 @@ void opcodes_init(CPU_6502* cpu){
     opcode_list[0xF6].execute = inc_zeropage_x;
                 /*INX, INY OPCODES*/ 
     opcode_list[0xE8].execute = inx_implied;
-    opcode_list[0xC8].execute = iny_implied;                     
+    opcode_list[0xC8].execute = iny_implied;     
+                /*FLAG OPCODES*/
+    opcode_list[0x18].execute = clc_implied;
+    opcode_list[0x38].execute = sec_implied;
+    opcode_list[0xD8].execute = cld_implied;
+    opcode_list[0xF8].execute = sed_implied;
+    opcode_list[0x58].execute = cli_implied;
+    opcode_list[0x78].execute = sei_implied;
+    opcode_list[0xB8].execute = clv_implied;
 }
   
                                                             /*CPU STUFF*/
@@ -1413,4 +1421,33 @@ void cpu_step(CPU_6502* cpu){
     cpu->pc++;
     opcode_list[opcode].execute(cpu);
 
+}
+                                                            /*FLAGS STUFF*/
+void clc_implied(CPU_6502* cpu) {
+    cpu->p &= ~FLAG_CARRY;
+    cpu->cycles += 2;
+}
+void sec_implied(CPU_6502* cpu) {
+    cpu->p |= FLAG_CARRY;
+    cpu->cycles += 2;
+}
+void cld_implied(CPU_6502* cpu) {
+    cpu->p &= ~FLAG_DECIMAL;
+    cpu->cycles += 2;
+}
+void sed_implied(CPU_6502* cpu) {
+    cpu->p |= FLAG_DECIMAL;
+    cpu->cycles += 2;
+}
+void cli_implied(CPU_6502* cpu) {
+    cpu->p &= ~FLAG_IRQ_DIS;
+    cpu->cycles += 2;
+}
+void sei_implied(CPU_6502* cpu) {
+    cpu->p |= FLAG_IRQ_DIS;
+    cpu->cycles += 2;
+}
+void clv_implied(CPU_6502* cpu) {
+    cpu->p &= ~FLAG_OVERFLOW;
+    cpu->cycles += 2;
 }
