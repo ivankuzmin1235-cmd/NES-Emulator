@@ -193,7 +193,15 @@ void opcodes_init(CPU_6502* cpu){
     opcode_list[0x20].execute = jsr_absolute;
     opcode_list[0x40].execute = rti_implied;
     opcode_list[0x60].execute = rts_implied;
-    
+                /*BRANCH OPCODES*/
+    opcode_list[0x90].execute = bcc_implied;
+    opcode_list[0xB0].execute = bcs_implied;
+    opcode_list[0xF0].execute = beq_implied;
+    opcode_list[0x30].execute = bmi_implied;
+    opcode_list[0xD0].execute = bne_implied;
+    opcode_list[0x10].execute = bpl_implied;
+    opcode_list[0x50].execute = bvc_implied;
+    opcode_list[0x70].execute = bvs_implied;
                 /*FLAGS OPCODES*/
     opcode_list[0x18].execute = clc_implied;
     opcode_list[0x38].execute = sec_implied;
@@ -1920,7 +1928,6 @@ void jmp_absolute(CPU_6502* cpu){
     cpu->pc = (hi << 8) | lo;
     cpu->cycles += 3; 
 }
-
 void jmp_indirect(CPU_6502* cpu){
     uint8_t lo_ptr = cpu_read(cpu, cpu->pc++);
     uint8_t hi_ptr = cpu_read(cpu, cpu->pc++);
@@ -1980,7 +1987,137 @@ void rts_implied(CPU_6502* cpu){
 
     cpu->cycles += 6;
 }
-
+                                                            /*BRANCH  STUFF*/
+void bcc_implied(CPU_6502* cpu){
+    uint8_t offset = (int8_t)cpu_read(cpu, cpu->pc++);
+    uint8_t t = 0;
+    uint8_t p = 0;
+    uint16_t old_pc = cpu->pc;
+    
+    
+    if(cpu->p & FLAG_CARRY == 0){
+        cpu->pc += offset;
+        t = 1;
+        if((old_pc & 0xFF00) != (cpu->pc & 0xFF00)) {
+            p = 1;
+        }
+    }
+    cpu->cycles += 2 + t + p;
+    
+}
+void bcs_implied(CPU_6502* cpu){
+    uint8_t offset = (int8_t)cpu_read(cpu, cpu->pc++);
+    uint8_t t = 0;
+    uint8_t p = 0;
+    uint16_t old_pc = cpu->pc;
+    
+    
+    if(cpu->p & FLAG_CARRY){
+        cpu->pc += offset;
+        t = 1;
+        if((old_pc & 0xFF00) != (cpu->pc & 0xFF00)) {
+            p = 1;
+        }
+    }
+    cpu->cycles += 2 + t + p;
+    
+}
+void beq_implied(CPU_6502* cpu){
+    uint8_t offset = (int8_t)cpu_read(cpu, cpu->pc++);
+    uint8_t t = 0;
+    uint8_t p = 0;
+    uint16_t old_pc = cpu->pc;
+    
+    
+    if(cpu->p & FLAG_ZERO){
+        cpu->pc += offset;
+        t = 1;
+        if((old_pc & 0xFF00) != (cpu->pc & 0xFF00)) {
+            p = 1;
+        }
+    }
+    cpu->cycles += 2 + t + p;  
+}
+void bmi_implied(CPU_6502* cpu){
+    uint8_t offset = (int8_t)cpu_read(cpu, cpu->pc++);
+    uint8_t t = 0;
+    uint8_t p = 0;
+    uint16_t old_pc = cpu->pc;
+    
+    
+    if(cpu->p & FLAG_NEGATIVE){
+        cpu->pc += offset;
+        t = 1;
+        if((old_pc & 0xFF00) != (cpu->pc & 0xFF00)) {
+            p = 1;
+        }
+    }
+    cpu->cycles += 2 + t + p;  
+}
+void bne_implied(CPU_6502* cpu){
+    uint8_t offset = (int8_t)cpu_read(cpu, cpu->pc++);
+    uint8_t t = 0;
+    uint8_t p = 0;
+    uint16_t old_pc = cpu->pc;
+    
+    
+    if(cpu->p & FLAG_ZERO == 0){
+        cpu->pc += offset;
+        t = 1;
+        if((old_pc & 0xFF00) != (cpu->pc & 0xFF00)) {
+            p = 1;
+        }
+    }
+    cpu->cycles += 2 + t + p;  
+}
+void bpl_implied(CPU_6502* cpu){
+    uint8_t offset = (int8_t)cpu_read(cpu, cpu->pc++);
+    uint8_t t = 0;
+    uint8_t p = 0;
+    uint16_t old_pc = cpu->pc;
+    
+    
+    if(cpu->p & FLAG_NEGATIVE == 0){
+        cpu->pc += offset;
+        t = 1;
+        if((old_pc & 0xFF00) != (cpu->pc & 0xFF00)) {
+            p = 1;
+        }
+    }
+    cpu->cycles += 2 + t + p;  
+}
+void bvc_implied(CPU_6502* cpu){
+    uint8_t offset = (int8_t)cpu_read(cpu, cpu->pc++);
+    uint8_t t = 0;
+    uint8_t p = 0;
+    uint16_t old_pc = cpu->pc;
+    
+    
+    if(cpu->p & FLAG_OVERFLOW == 0){
+        cpu->pc += offset;
+        t = 1;
+        if((old_pc & 0xFF00) != (cpu->pc & 0xFF00)) {
+            p = 1;
+        }
+    }
+    cpu->cycles += 2 + t + p;  
+}
+void bvs_implied(CPU_6502* cpu){
+    uint8_t offset = (int8_t)cpu_read(cpu, cpu->pc++);
+    uint8_t t = 0;
+    uint8_t p = 0;
+    uint16_t old_pc = cpu->pc;
+    
+    
+    if(cpu->p & FLAG_OVERFLOW){
+        cpu->pc += offset;
+        t = 1;
+        if((old_pc & 0xFF00) != (cpu->pc & 0xFF00)) {
+            p = 1;
+        }
+    }
+    cpu->cycles += 2 + t + p;  
+}
                                                             /*FLAGS STUFF*/
 void clc_implied(CPU_6502* cpu) {
     cpu->p &= ~FLAG_CARRY;
