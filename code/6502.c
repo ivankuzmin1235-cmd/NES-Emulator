@@ -169,7 +169,7 @@ void opcodes_init(CPU_6502* cpu){
                 /*INX, INY OPCODES*/ 
     opcode_list[0xE8].execute = inx_implied;
     opcode_list[0xC8].execute = iny_implied;     
-                /*FLAG OPCODES*/
+                /*FLAGS OPCODES*/
     opcode_list[0x18].execute = clc_implied;
     opcode_list[0x38].execute = sec_implied;
     opcode_list[0xD8].execute = cld_implied;
