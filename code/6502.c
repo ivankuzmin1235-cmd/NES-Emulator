@@ -186,9 +186,13 @@ void opcodes_init(CPU_6502* cpu){
                 /*INX, INY OPCODES*/ 
     opcode_list[0xE8].execute = inx_implied;
     opcode_list[0xC8].execute = iny_implied;     
-                
-    
-    
+                /*BREAK OPCODES*/         
+    opcode_list[0x00].execute = brk_implied;
+    opcode_list[0x4C].execute = jmp_absolute;
+    opcode_list[0x6C].execute = jmp_indirect;
+    opcode_list[0x20].execute = jsr_absolute;
+    opcode_list[0x40].execute = rti_implied;
+    opcode_list[0x60].execute = rts_implied;
     
                 /*FLAGS OPCODES*/
     opcode_list[0x18].execute = clc_implied;
@@ -198,6 +202,8 @@ void opcodes_init(CPU_6502* cpu){
     opcode_list[0x58].execute = cli_implied;
     opcode_list[0x78].execute = sei_implied;
     opcode_list[0xB8].execute = clv_implied;
+                /*NOP OPCODE*/
+    opcode_list[0xEA].execute = nop_implied;
 }
   
                                                             /*CPU STUFF*/
@@ -1883,7 +1889,97 @@ void ror_zeropage_x(CPU_6502* cpu){
     
     cpu->cycles += 6;
 }
+                                                            /*BRK STUFF*/
+void brk_implied(CPU_6502* cpu){
+    cpu->pc += 2;
 
+    cpu_write(cpu, 0x0100 + cpu->sp, (cpu->pc >> 8) & 0xFF);/*Hi byte first*/
+    cpu->sp--;
+    cpu_write(cpu, 0x0100 + cpu->sp, cpu->pc & 0xFF);/*Then lo byte*/
+    cpu->sp--;
+
+    uint8_t cpu_status = cpu->p | 0x30; 
+    cpu_write(cpu, 0x0100 + cpu->sp, cpu_status);/*status in stack*/
+    cpu->sp--;
+
+    cpu->p |= FLAG_IRQ_DIS;/*I = 1*/
+
+    uint8_t lo = cpu_read(cpu, 0xFFFE);
+    uint8_t hi = cpu_read(cpu, 0xFFFF);
+
+    cpu->pc = (hi << 8) | lo;
+
+    cpu->cycles += 7;
+
+}
+                                                            /*JMP STUFF*/
+void jmp_absolute(CPU_6502* cpu){
+    uint8_t hi = cpu_read(cpu, cpu->pc++);
+    uint8_t lo = cpu_read(cpu, cpu->pc++);
+
+    cpu->pc = (hi << 8) | lo;
+    cpu->cycles += 3; 
+}
+
+void jmp_indirect(CPU_6502* cpu){
+    uint8_t lo_ptr = cpu_read(cpu, cpu->pc++);
+    uint8_t hi_ptr = cpu_read(cpu, cpu->pc++);
+
+    uint16_t ptr = (hi_ptr << 8) | lo_ptr;
+
+    uint8_t lo = cpu_read(cpu, ptr);
+    uint8_t hi = cpu_read(cpu, (ptr & 0xFF00) | ((ptr + 1) & 0x00FF));
+
+    cpu->pc = (hi << 8) | lo;
+
+    cpu->cycles += 5;
+}
+                                                            /*JSR STUFF*/
+void jsr_absolute(CPU_6502* cpu){
+    uint16_t sub_addr = get_absolute_addr(cpu);
+
+    uint8_t prev_ins = cpu->pc - 1;
+
+    cpu_write(cpu, 0x0100 + cpu->sp,(prev_ins >> 8) & 0xFF);
+    cpu->sp--;
+    cpu_write(cpu, 0x0100 + cpu->sp, prev_ins & 0xFF);
+    cpu->sp--;
+
+    cpu->pc = sub_addr;
+
+    cpu->cycles += 6;
+}
+                                                            /*RTI STUFF*/
+void rti_implied(CPU_6502* cpu){
+    // Извлекаем флаги из стека (увеличиваем SP до чтения)
+    cpu->sp++;
+    uint8_t status = cpu_read(cpu, 0x0100 + cpu->sp);
+    
+    // Извлекаем PC (младший байт, потом старший)
+    cpu->sp++;
+    uint8_t lo = cpu_read(cpu, 0x0100 + cpu->sp);
+    cpu->sp++;
+    uint8_t hi = cpu_read(cpu, 0x0100 + cpu->sp);
+    
+    // Восстанавливаем флаги (бит 5 всегда должен быть 1)
+    cpu->p = status | 0x20;
+    
+    // Восстанавливаем PC (без прибавления 1, в отличие от RTS)
+    cpu->pc = (hi << 8) | lo;
+    
+    cpu->cycles += 6;
+}
+                                                            /*RTS STUFF*/
+void rts_implied(CPU_6502* cpu){
+    cpu->sp++;
+    uint8_t pc_lo = cpu_read(cpu, 0x0100 + cpu->sp);
+    cpu->sp++;
+    uint8_t pc_hi = cpu_read(cpu, 0x0100 + cpu->sp);
+    cpu->sp++;
+    cpu->pc = ((pc_hi << 8) | pc_lo) + 1;
+
+    cpu->cycles += 6;
+}
 
                                                             /*FLAGS STUFF*/
 void clc_implied(CPU_6502* cpu) {
@@ -1914,8 +2010,10 @@ void clv_implied(CPU_6502* cpu) {
     cpu->p &= ~FLAG_OVERFLOW;
     cpu->cycles += 2;
 }  
-
-
+                                                            /*NOP STUFF*/
+void nop_implied(CPU_6502* cpu){
+    return;
+}
 
 void cpu_step(CPU_6502* cpu){
     uint8_t opcode = cpu_read(cpu, cpu->pc);
