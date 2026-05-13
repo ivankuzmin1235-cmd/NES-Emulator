@@ -133,7 +133,19 @@ void opcodes_init(CPU_6502* cpu){
     opcode_list[0xF6].execute = inc_zeropage_x;
                 /*INX, INY OPCODES*/ 
     opcode_list[0xE8].execute = inx_implied;
-    opcode_list[0xC8].execute = iny_implied;                     
+    opcode_list[0xC8].execute = iny_implied;
+                /*ASL OPCODES*/ 
+    opcode_list[0x0A].execute = asl_accumulator;
+    opcode_list[0x0E].execute = asl_absolute;
+    opcode_list[0x1E].execute = asl_absolute_x;
+    opcode_list[0x06].execute = asl_zeropage;
+    opcode_list[0x16].execute = asl_zeropage_x;
+                /*LSR OPCODES*/
+    opcode_list[0x4A].execute = lsr_accumulator;
+    opcode_list[0x4E].execute = lsr_absolute;
+    opcode_list[0x5E].execute = lsr_absolute_x;
+    opcode_list[0x46].execute = lsr_zeropage;
+    opcode_list[0x56].execute = lsr_zeropage_x;
 }
   
                                                             /*CPU STUFF*/
@@ -1076,6 +1088,208 @@ void iny_implied(CPU_6502* cpu){
     dex_flags_do(cpu);
     cpu->cycles += 2;
 }
+                                                            /*ASL STUFF*/
+void asl_flags_do(CPU_6502* cpu, uint8_t m){
+    if(m == 0){
+        cpu->p |= FLAG_ZERO;
+    }
+    else{
+        cpu->p &= ~FLAG_ZERO;
+    }
+    if((m & 0x80)){
+        cpu->p |= FLAG_NEGATIVE;
+    }
+    else{
+        cpu->p &= ~FLAG_NEGATIVE;
+    }
+}
+void asl_accumulator(CPU_6502* cpu){
+    uint8_t carry = (cpu->a & 0x80) ? 1 : 0;
+    
+    // Сдвигаем влево
+    cpu->a <<= 1;
+    
+    // Устанавливаем Carry
+    if(carry) {
+        cpu->p |= FLAG_CARRY;
+    } else {
+        cpu->p &= ~FLAG_CARRY;
+    }
+    asl_flags_do(cpu, cpu->a);
+    cpu->cycles += 2;
+}
+void asl_absolute(CPU_6502* cpu){
+    uint16_t m_addr = get_absolute_addr(cpu);
+    uint8_t m = cpu_read(cpu, m_addr);
+    
+    uint8_t carry = (m & 0x80) ? 1 : 0;
+    
+    // Сдвигаем влево
+    m <<= 1;
+    
+    // Устанавливаем Carry
+    if(carry) {
+        cpu->p |= FLAG_CARRY;
+    } else {
+        cpu->p &= ~FLAG_CARRY;
+    }
+    asl_flags_do(cpu, m);
+    cpu->cycles += 6;
+}
+void asl_absolute_x(CPU_6502* cpu){
+    uint16_t m_addr = get_absolute_x_addr(cpu, NULL);
+    uint8_t m = cpu_read(cpu, m_addr);
+    
+    uint8_t carry = (m & 0x80) ? 1 : 0;
+    
+    // Сдвигаем влево
+    m <<= 1;
+    
+    // Устанавливаем Carry
+    if(carry) {
+        cpu->p |= FLAG_CARRY;
+    } else {
+        cpu->p &= ~FLAG_CARRY;
+    }
+    asl_flags_do(cpu, m);
+    cpu->cycles += 7;
+}
+void asl_zeropage(CPU_6502* cpu){
+    uint16_t m_addr = get_zeropage_addr(cpu);
+    uint8_t m = cpu_read(cpu, m_addr);
+    
+    uint8_t carry = (m & 0x80) ? 1 : 0;
+    
+    // Сдвигаем влево
+    m <<= 1;
+    
+    // Устанавливаем Carry
+    if(carry) {
+        cpu->p |= FLAG_CARRY;
+    } else {
+        cpu->p &= ~FLAG_CARRY;
+    }
+    asl_flags_do(cpu, m);
+    cpu->cycles += 5;
+}
+void asl_zeropage_x(CPU_6502* cpu){
+    uint16_t m_addr = get_zeropage_x_addr(cpu);
+    uint8_t m = cpu_read(cpu, m_addr);
+    
+    uint8_t carry = (m & 0x80) ? 1 : 0;
+    
+    // Сдвигаем влево
+    m <<= 1;
+    
+    // Устанавливаем Carry
+    if(carry) {
+        cpu->p |= FLAG_CARRY;
+    } else {
+        cpu->p &= ~FLAG_CARRY;
+    }
+    asl_flags_do(cpu, m);
+    cpu->cycles += 6;
+}
+                                                            /*LSR STUFF*/
+void lsr_flags_do(CPU_6502* cpu, uint8_t m){
+    if(m == 0){
+        cpu->p |= FLAG_ZERO;
+    }
+    else{
+        cpu->p &= ~FLAG_ZERO;
+    }
+    cpu->p &= ~FLAG_NEGATIVE;
+    
+}
+void lsr_accumulator(CPU_6502* cpu){
+    uint8_t carry = cpu->a & 0x01;
+    
+    // Сдвигаем влево
+    cpu->a >>= 1;
+    
+    // Устанавливаем Carry
+    if(carry) {
+        cpu->p |= FLAG_CARRY;
+    } else {
+        cpu->p &= ~FLAG_CARRY;
+    }
+    lsr_flags_do(cpu, cpu->a);
+    cpu->cycles += 2;
+}
+void lsr_absolute(CPU_6502* cpu){
+    uint16_t m_addr = get_absolute_addr(cpu);
+    uint8_t m = cpu_read(cpu, m_addr);
+    
+    uint8_t carry = (m & 0x01) ? 1 : 0;
+    
+    // Сдвигаем влево
+    m >>= 1;
+    
+    // Устанавливаем Carry
+    if(carry) {
+        cpu->p |= FLAG_CARRY;
+    } else {
+        cpu->p &= ~FLAG_CARRY;
+    }
+    lsr_flags_do(cpu, m);
+    cpu->cycles += 6;
+}
+void lsr_absolute_x(CPU_6502* cpu){
+    uint16_t m_addr = get_absolute_x_addr(cpu, NULL);
+    uint8_t m = cpu_read(cpu, m_addr);
+    
+    uint8_t carry = (m & 0x01) ? 1 : 0;
+    
+    // Сдвигаем влево
+    m >>= 1;
+    
+    // Устанавливаем Carry
+    if(carry) {
+        cpu->p |= FLAG_CARRY;
+    } else {
+        cpu->p &= ~FLAG_CARRY;
+    }
+    lsr_flags_do(cpu, m);
+    cpu->cycles += 7;
+}
+void lsr_zeropage(CPU_6502* cpu){
+    uint16_t m_addr = get_zeropage_addr(cpu);
+    uint8_t m = cpu_read(cpu, m_addr);
+    
+    uint8_t carry = (m & 0x01) ? 1 : 0;
+    
+    // Сдвигаем влево
+    m >>= 1;
+    
+    // Устанавливаем Carry
+    if(carry) {
+        cpu->p |= FLAG_CARRY;
+    } else {
+        cpu->p &= ~FLAG_CARRY;
+    }
+    lsr_flags_do(cpu, m);
+    cpu->cycles += 5;
+}
+void lsr_zeropage_x(CPU_6502* cpu){
+    uint16_t m_addr = get_zeropage_x_addr(cpu);
+    uint8_t m = cpu_read(cpu, m_addr);
+    
+    uint8_t carry = (m & 0x01) ? 1 : 0;
+    
+    // Сдвигаем влево
+    m >>= 1;
+    
+    // Устанавливаем Carry
+    if(carry) {
+        cpu->p |= FLAG_CARRY;
+    } else {
+        cpu->p &= ~FLAG_CARRY;
+    }
+    lsr_flags_do(cpu, m);
+    cpu->cycles += 6;
+}
+  
+
 
 
 void cpu_step(CPU_6502* cpu){
