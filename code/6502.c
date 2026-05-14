@@ -1,33 +1,8 @@
 #include <stdint.h>
 #include "stdio.h"
-
+#include "6502.h"
 #define ROM_SPACE (0xFFFF - 0x8000)
-// Флаги процессора 6502 (битовые позиции)
-#define FLAG_CARRY    0x01  // Бит 0: перенос
-#define FLAG_ZERO     0x02  // Бит 1: ноль
-#define FLAG_IRQ_DIS  0x04  // Бит 2: запрет прерываний
-#define FLAG_DECIMAL  0x08  // Бит 3: десятичный режим (не используется в NES)
-#define FLAG_BREAK    0x10  // Бит 4: программное прерывание
-#define FLAG_OVERFLOW 0x40  // Бит 6: переполнение
-#define FLAG_NEGATIVE 0x80  // Бит 7: отрицательное число
 
-typedef struct {
-    uint8_t a;
-    uint8_t x;
-    uint8_t y;
-    uint8_t sp;
-    uint8_t p;
-    uint16_t pc;
-    uint64_t cycles;
-    uint8_t ram[0x10000]; /*64KB RAM*/
-  
-}CPU_6502;
-
-typedef struct {
-        uint8_t opcode;
-        void (*execute)(CPU_6502*);
-
-}Instruction;
 
 Instruction opcode_list[0xFF];
 
@@ -217,22 +192,32 @@ void opcodes_init(CPU_6502* cpu){
                                                             /*CPU STUFF*/
 void cpu_load_rom(CPU_6502* cpu, const char* filename){
     FILE* f = fopen(filename, "rb");
-    if (!f) {
-        printf("Не удалось открыть файл: %s\n", filename);
+    if (!f) return;
+    
+    uint8_t header[16];
+    size_t read = fread(header, 1, 16, f);
+    if (read != 16) {
+        fclose(f);
         return;
     }
     
-    fseek(f, 0, SEEK_END);
-    long size = ftell(f);
-    fseek(f, 0, SEEK_SET);
-    
-    if (size > ROM_SPACE) {
-        printf("ROM is way TOO BIG");
+    // Проверка заголовка
+    if (header[0] != 'N' || header[1] != 'E' || header[2] != 'S') {
         fclose(f);
-        
-        
+        return;
     }
-    fread(cpu->ram + 0x8000, 1, size, f);
+    
+    int prg_rom_size = header[4] * 16384;  // 16KB units
+    
+    // Проверка, что ROM не вылезет за пределы памяти
+    if (prg_rom_size > 32768) {  // обычно не больше 32KB
+        printf("ROM too big: %d bytes\n", prg_rom_size);
+        fclose(f);
+        return;
+    }
+    
+    size_t bytes_read = fread(cpu->ram + 0x8000, 1, prg_rom_size, f);
+    printf("Loaded %zu bytes at 0x8000\n", bytes_read);
     
     fclose(f);
 
@@ -240,11 +225,15 @@ void cpu_load_rom(CPU_6502* cpu, const char* filename){
 }
 
 void cpu_init(CPU_6502* cpu){
-    cpu->cycles = 0;
-    cpu->sp = cpu->ram[0xFD];
+    cpu->a = 0;
+    cpu->x = 0;
+    cpu->y = 0;
+    cpu->sp = 0xFD;
+    cpu->p = 0x24;
     cpu->pc = 0x8000;
-    cpu_load_rom(cpu, "");
+    cpu->cycles = 0;
     opcodes_init(cpu);
+    cpu_load_rom(cpu, "6502_functional_test.bin");
 }
 
 uint8_t cpu_read(CPU_6502* cpu, uint16_t address){
@@ -2156,6 +2145,8 @@ void cpu_step(CPU_6502* cpu){
     uint8_t opcode = cpu_read(cpu, cpu->pc);
     cpu->pc++;
     opcode_list[opcode].execute(cpu);
+     
+   
 
 }
 
