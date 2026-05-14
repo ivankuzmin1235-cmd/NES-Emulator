@@ -2137,7 +2137,7 @@ void clv_implied(CPU_6502* cpu) {
 }  
                                                             /*NOP STUFF*/
 void nop_implied(CPU_6502* cpu){
-    return;
+    cpu->cycles += 2;
 }
 
 
