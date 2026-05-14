@@ -1,247 +1,9 @@
 #include <stdint.h>
 #include "stdio.h"
 #include "6502.h"
+#include <string.h>
 #define ROM_SPACE (0xFFFF - 0x8000)
 
-
-Instruction opcode_list[0xFF];
-
-void opcodes_init(CPU_6502* cpu){
-                /*LDA OPCODES*/
-    opcode_list[0xA9].execute = lda_immediate;
-    opcode_list[0xAD].execute = lda_absolute;
-    opcode_list[0xBD].execute = lda_absolute_x;
-    opcode_list[0xB9].execute = lda_absolute_y;
-    opcode_list[0xA5].execute = lda_zeropage;
-    opcode_list[0xB5].execute = lda_zeropage_x;
-    opcode_list[0xA1].execute = lda_indirect_x;
-    opcode_list[0xB1].execute = lda_indirect_y;
-                /*LDX OPCODES*/
-    opcode_list[0xA2].execute = ldx_immediate;
-    opcode_list[0xAE].execute = ldx_absolute;
-    opcode_list[0xBE].execute = ldx_absolute_y;
-    opcode_list[0xA6].execute = ldx_zeropage;
-    opcode_list[0xB6].execute = ldx_zeropage_y;
-                /*LDY OPCODES*/
-    opcode_list[0xA0].execute = ldy_immediate;
-    opcode_list[0xAC].execute = ldy_absolute;
-    opcode_list[0xBC].execute = ldy_absolute_y;
-    opcode_list[0xA4].execute = ldy_zeropage;
-    opcode_list[0xB4].execute = ldy_zeropage_y;
-                /*STA OPCODES*/
-    opcode_list[0x8D].execute = sta_absolute;
-    opcode_list[0x9D].execute = sta_absolute_x;
-    opcode_list[0x99].execute = sta_absolute_y;
-    opcode_list[0x85].execute = sta_zeropage;
-    opcode_list[0x95].execute = sta_zeropage_x;
-    opcode_list[0x81].execute = sta_indirect_x;
-    opcode_list[0x91].execute = sta_indirect_y;
-                /*STX OPCODES*/
-    opcode_list[0x8E].execute = stx_absolute;
-    opcode_list[0x86].execute = stx_zeropage;
-    opcode_list[0x96].execute = stx_zeropage_y;
-                /*STY OPCODES*/
-    opcode_list[0x8C].execute = sty_absolute;
-    opcode_list[0x84].execute = sty_zeropage;
-    opcode_list[0x94].execute = sty_zeropage_x;
-        /*TAX,TAY,TSX,TXA,TXS,TYA OPCODES*/
-    opcode_list[0xAA].execute = tax_implied;
-    opcode_list[0xA8].execute = tay_implied;
-    opcode_list[0xBA].execute = tsx_implied;
-    opcode_list[0x8A].execute = txa_implied;
-    opcode_list[0x9A].execute = txs_implied;
-    opcode_list[0x98].execute = tya_implied;
-        /*PHA, PHP, PLA, PLP OPCODES*/
-    opcode_list[0x48].execute = pha_implied;
-    opcode_list[0x08].execute = php_implied;
-    opcode_list[0x68].execute = pla_implied;
-    opcode_list[0x28].execute = plp_implied;
-                /*ASL OPCODES*/ 
-    opcode_list[0x0A].execute = asl_accumulator;
-    opcode_list[0x0E].execute = asl_absolute;
-    opcode_list[0x1E].execute = asl_absolute_x;
-    opcode_list[0x06].execute = asl_zeropage;
-    opcode_list[0x16].execute = asl_zeropage_x;
-                /*LSR OPCODES*/
-    opcode_list[0x4A].execute = lsr_accumulator;
-    opcode_list[0x4E].execute = lsr_absolute;
-    opcode_list[0x5E].execute = lsr_absolute_x;
-    opcode_list[0x46].execute = lsr_zeropage;
-    opcode_list[0x56].execute = lsr_zeropage_x;
-                /*ROL OPCODES*/
-    opcode_list[0x2A].execute = rol_accumulator;
-    opcode_list[0x2E].execute = rol_absolute;
-    opcode_list[0x3E].execute = rol_absolute_x;
-    opcode_list[0x26].execute = rol_zeropage;
-    opcode_list[0x36].execute = rol_zeropage_x;
-                /*ROR OPCODES*/
-    opcode_list[0x6A].execute = ror_accumulator;
-    opcode_list[0x6E].execute = ror_absolute;
-    opcode_list[0x7E].execute = ror_absolute_x;
-    opcode_list[0x66].execute = ror_zeropage;
-    opcode_list[0x76].execute = ror_zeropage_x;
-                /*AND OPCODES*/
-    opcode_list[0x29].execute = and_immediate;
-    opcode_list[0x2D].execute = and_absolute;
-    opcode_list[0x3D].execute = and_absolute_x;
-    opcode_list[0x39].execute = and_absolute_y;
-    opcode_list[0x25].execute = and_zeropage;
-    opcode_list[0x35].execute = and_zeropage_x;
-    opcode_list[0x21].execute = and_indirect_x;
-    opcode_list[0x31].execute = and_indirect_y;
-                /*BIT OPCODES*/
-    opcode_list[0x2C].execute = bit_absolute;
-    opcode_list[0x24].execute = bit_zeropage; 
-                /*EOR OPCODES*/ 
-    opcode_list[0x49].execute = eor_immediate;
-    opcode_list[0x4D].execute = eor_absolute;
-    opcode_list[0x5D].execute = eor_absolute_x;
-    opcode_list[0x59].execute = eor_absolute_y;
-    opcode_list[0x45].execute = eor_zeropage;
-    opcode_list[0x55].execute = eor_zeropage_x;
-    opcode_list[0x41].execute = eor_indirect_x;
-    opcode_list[0x51].execute = eor_indirect_y; 
-                /*ORA OPCODES*/ 
-    opcode_list[0x09].execute = ora_immediate;
-    opcode_list[0x0D].execute = ora_absolute;
-    opcode_list[0x1D].execute = ora_absolute_x;
-    opcode_list[0x19].execute = ora_absolute_y;
-    opcode_list[0x05].execute = ora_zeropage;
-    opcode_list[0x15].execute = ora_zeropage_x;
-    opcode_list[0x01].execute = ora_indirect_x;
-    opcode_list[0x11].execute = ora_indirect_y; 
-                /*ADC OPCODES*/
-    opcode_list[0x69].execute = adc_immediate;
-    opcode_list[0x65].execute = adc_zeropage;
-    opcode_list[0x75].execute = adc_zeropage_x;
-    opcode_list[0x6D].execute = adc_absolute;
-    opcode_list[0x7D].execute = adc_absolute_x;
-    opcode_list[0x79].execute = adc_absolute_y;
-    opcode_list[0x61].execute = adc_indirect_x;
-    opcode_list[0x71].execute = adc_indirect_y;
-                /*CMP OPCODES*/
-    opcode_list[0xC9].execute = cmp_immediate;
-    opcode_list[0xC5].execute = cmp_zeropage;
-    opcode_list[0xD5].execute = cmp_zeropage_x;
-    opcode_list[0xCD].execute = cmp_absolute;
-    opcode_list[0xDD].execute = cmp_absolute_x;
-    opcode_list[0xD9].execute = cmp_absolute_y;
-    opcode_list[0xC1].execute = cmp_indirect_x;
-    opcode_list[0xD1].execute = cmp_indirect_y;
-                /*CPX OPCODES*/
-    opcode_list[0xE0].execute = cpx_immediate;
-    opcode_list[0xE4].execute = cpx_zeropage;
-    opcode_list[0xEC].execute = cpx_absolute;
-                /*CPY OPCODES*/
-    opcode_list[0xC0].execute = cpy_immediate;
-    opcode_list[0xC4].execute = cpy_zeropage;
-    opcode_list[0xCC].execute = cpy_absolute;
-                /*SBC OPCODES*/
-    opcode_list[0xE9].execute = sbc_immediate;
-    opcode_list[0xE5].execute = sbc_zeropage;
-    opcode_list[0xF5].execute = sbc_zeropage_x;
-    opcode_list[0xED].execute = sbc_absolute;
-    opcode_list[0xFD].execute = sbc_absolute_x;
-    opcode_list[0xF9].execute = sbc_absolute_y;
-    opcode_list[0xE1].execute = sbc_indirect_x;
-    opcode_list[0xF1].execute = sbc_indirect_y;
-                /*DEC OPCODES*/   
-    opcode_list[0xCE].execute = dec_absolute;
-    opcode_list[0xDE].execute = dec_absolute_x;
-    opcode_list[0xC6].execute = dec_zeropage;
-    opcode_list[0xD6].execute = dec_zeropage_x;
-                /*DEX, DEY OPCODES*/ 
-    opcode_list[0xCA].execute = dex_implied;
-    opcode_list[0x88].execute = dey_implied; 
-                /*INC OPCODES*/
-    opcode_list[0xEE].execute = inc_absolute;
-    opcode_list[0xFE].execute = inc_absolute_x;
-    opcode_list[0xE6].execute = inc_zeropage;
-    opcode_list[0xF6].execute = inc_zeropage_x;
-                /*INX, INY OPCODES*/ 
-    opcode_list[0xE8].execute = inx_implied;
-    opcode_list[0xC8].execute = iny_implied;     
-                /*BREAK OPCODES*/         
-    opcode_list[0x00].execute = brk_implied;
-    opcode_list[0x4C].execute = jmp_absolute;
-    opcode_list[0x6C].execute = jmp_indirect;
-    opcode_list[0x20].execute = jsr_absolute;
-    opcode_list[0x40].execute = rti_implied;
-    opcode_list[0x60].execute = rts_implied;
-                /*BRANCH OPCODES*/
-    opcode_list[0x90].execute = bcc_implied;
-    opcode_list[0xB0].execute = bcs_implied;
-    opcode_list[0xF0].execute = beq_implied;
-    opcode_list[0x30].execute = bmi_implied;
-    opcode_list[0xD0].execute = bne_implied;
-    opcode_list[0x10].execute = bpl_implied;
-    opcode_list[0x50].execute = bvc_implied;
-    opcode_list[0x70].execute = bvs_implied;
-                /*FLAGS OPCODES*/
-    opcode_list[0x18].execute = clc_implied;
-    opcode_list[0x38].execute = sec_implied;
-    opcode_list[0xD8].execute = cld_implied;
-    opcode_list[0xF8].execute = sed_implied;
-    opcode_list[0x58].execute = cli_implied;
-    opcode_list[0x78].execute = sei_implied;
-    opcode_list[0xB8].execute = clv_implied;
-                /*NOP OPCODE*/
-    opcode_list[0xEA].execute = nop_implied;
-}
-  
-                                                            /*CPU STUFF*/
-void cpu_load_rom(CPU_6502* cpu, const char* filename){
-    FILE* f = fopen(filename, "rb");
-    if (!f) return;
-    
-    uint8_t header[16];
-    size_t read = fread(header, 1, 16, f);
-    if (read != 16) {
-        fclose(f);
-        return;
-    }
-    
-    // Проверка заголовка
-    if (header[0] != 'N' || header[1] != 'E' || header[2] != 'S') {
-        fclose(f);
-        return;
-    }
-    
-    int prg_rom_size = header[4] * 16384;  // 16KB units
-    
-    // Проверка, что ROM не вылезет за пределы памяти
-    if (prg_rom_size > 32768) {  // обычно не больше 32KB
-        printf("ROM too big: %d bytes\n", prg_rom_size);
-        fclose(f);
-        return;
-    }
-    
-    size_t bytes_read = fread(cpu->ram + 0x8000, 1, prg_rom_size, f);
-    printf("Loaded %zu bytes at 0x8000\n", bytes_read);
-    
-    fclose(f);
-
-    
-}
-
-void cpu_init(CPU_6502* cpu){
-    cpu->a = 0;
-    cpu->x = 0;
-    cpu->y = 0;
-    cpu->sp = 0xFD;
-    cpu->p = 0x24;
-    cpu->pc = 0x8000;
-    cpu->cycles = 0;
-    opcodes_init(cpu);
-    cpu_load_rom(cpu, "6502_functional_test.bin");
-}
-
-uint8_t cpu_read(CPU_6502* cpu, uint16_t address){
-    return cpu->ram[address];
-}
-void cpu_write(CPU_6502* cpu, uint16_t address, uint8_t value){
-    cpu->ram[address] = value;
-}
 
                                                           /*ADDRESS STUFF*/
 /*This part contains different functions for addressing modes of NES 6502, we will use it to count address of operand for instructions*/
@@ -2138,16 +1900,315 @@ void clv_implied(CPU_6502* cpu) {
 }  
                                                             /*NOP STUFF*/
 void nop_implied(CPU_6502* cpu){
+    cpu->cycles += 2;
     return;
+}
+
+
+
+
+                                                            /*OPCODES STUFF*/
+Instruction opcode_list[0xFF];
+
+void opcodes_init(CPU_6502* cpu){
+                /*LDA OPCODES*/
+    opcode_list[0xA9].execute = lda_immediate;
+    opcode_list[0xAD].execute = lda_absolute;
+    opcode_list[0xBD].execute = lda_absolute_x;
+    opcode_list[0xB9].execute = lda_absolute_y;
+    opcode_list[0xA5].execute = lda_zeropage;
+    opcode_list[0xB5].execute = lda_zeropage_x;
+    opcode_list[0xA1].execute = lda_indirect_x;
+    opcode_list[0xB1].execute = lda_indirect_y;
+                /*LDX OPCODES*/
+    opcode_list[0xA2].execute = ldx_immediate;
+    opcode_list[0xAE].execute = ldx_absolute;
+    opcode_list[0xBE].execute = ldx_absolute_y;
+    opcode_list[0xA6].execute = ldx_zeropage;
+    opcode_list[0xB6].execute = ldx_zeropage_y;
+                /*LDY OPCODES*/
+    opcode_list[0xA0].execute = ldy_immediate;
+    opcode_list[0xAC].execute = ldy_absolute;
+    opcode_list[0xBC].execute = ldy_absolute_y;
+    opcode_list[0xA4].execute = ldy_zeropage;
+    opcode_list[0xB4].execute = ldy_zeropage_y;
+                /*STA OPCODES*/
+    opcode_list[0x8D].execute = sta_absolute;
+    opcode_list[0x9D].execute = sta_absolute_x;
+    opcode_list[0x99].execute = sta_absolute_y;
+    opcode_list[0x85].execute = sta_zeropage;
+    opcode_list[0x95].execute = sta_zeropage_x;
+    opcode_list[0x81].execute = sta_indirect_x;
+    opcode_list[0x91].execute = sta_indirect_y;
+                /*STX OPCODES*/
+    opcode_list[0x8E].execute = stx_absolute;
+    opcode_list[0x86].execute = stx_zeropage;
+    opcode_list[0x96].execute = stx_zeropage_y;
+                /*STY OPCODES*/
+    opcode_list[0x8C].execute = sty_absolute;
+    opcode_list[0x84].execute = sty_zeropage;
+    opcode_list[0x94].execute = sty_zeropage_x;
+        /*TAX,TAY,TSX,TXA,TXS,TYA OPCODES*/
+    opcode_list[0xAA].execute = tax_implied;
+    opcode_list[0xA8].execute = tay_implied;
+    opcode_list[0xBA].execute = tsx_implied;
+    opcode_list[0x8A].execute = txa_implied;
+    opcode_list[0x9A].execute = txs_implied;
+    opcode_list[0x98].execute = tya_implied;
+        /*PHA, PHP, PLA, PLP OPCODES*/
+    opcode_list[0x48].execute = pha_implied;
+    opcode_list[0x08].execute = php_implied;
+    opcode_list[0x68].execute = pla_implied;
+    opcode_list[0x28].execute = plp_implied;
+                /*ASL OPCODES*/ 
+    opcode_list[0x0A].execute = asl_accumulator;
+    opcode_list[0x0E].execute = asl_absolute;
+    opcode_list[0x1E].execute = asl_absolute_x;
+    opcode_list[0x06].execute = asl_zeropage;
+    opcode_list[0x16].execute = asl_zeropage_x;
+                /*LSR OPCODES*/
+    opcode_list[0x4A].execute = lsr_accumulator;
+    opcode_list[0x4E].execute = lsr_absolute;
+    opcode_list[0x5E].execute = lsr_absolute_x;
+    opcode_list[0x46].execute = lsr_zeropage;
+    opcode_list[0x56].execute = lsr_zeropage_x;
+                /*ROL OPCODES*/
+    opcode_list[0x2A].execute = rol_accumulator;
+    opcode_list[0x2E].execute = rol_absolute;
+    opcode_list[0x3E].execute = rol_absolute_x;
+    opcode_list[0x26].execute = rol_zeropage;
+    opcode_list[0x36].execute = rol_zeropage_x;
+                /*ROR OPCODES*/
+    opcode_list[0x6A].execute = ror_accumulator;
+    opcode_list[0x6E].execute = ror_absolute;
+    opcode_list[0x7E].execute = ror_absolute_x;
+    opcode_list[0x66].execute = ror_zeropage;
+    opcode_list[0x76].execute = ror_zeropage_x;
+                /*AND OPCODES*/
+    opcode_list[0x29].execute = and_immediate;
+    opcode_list[0x2D].execute = and_absolute;
+    opcode_list[0x3D].execute = and_absolute_x;
+    opcode_list[0x39].execute = and_absolute_y;
+    opcode_list[0x25].execute = and_zeropage;
+    opcode_list[0x35].execute = and_zeropage_x;
+    opcode_list[0x21].execute = and_indirect_x;
+    opcode_list[0x31].execute = and_indirect_y;
+                /*BIT OPCODES*/
+    opcode_list[0x2C].execute = bit_absolute;
+    opcode_list[0x24].execute = bit_zeropage; 
+                /*EOR OPCODES*/ 
+    opcode_list[0x49].execute = eor_immediate;
+    opcode_list[0x4D].execute = eor_absolute;
+    opcode_list[0x5D].execute = eor_absolute_x;
+    opcode_list[0x59].execute = eor_absolute_y;
+    opcode_list[0x45].execute = eor_zeropage;
+    opcode_list[0x55].execute = eor_zeropage_x;
+    opcode_list[0x41].execute = eor_indirect_x;
+    opcode_list[0x51].execute = eor_indirect_y; 
+                /*ORA OPCODES*/ 
+    opcode_list[0x09].execute = ora_immediate;
+    opcode_list[0x0D].execute = ora_absolute;
+    opcode_list[0x1D].execute = ora_absolute_x;
+    opcode_list[0x19].execute = ora_absolute_y;
+    opcode_list[0x05].execute = ora_zeropage;
+    opcode_list[0x15].execute = ora_zeropage_x;
+    opcode_list[0x01].execute = ora_indirect_x;
+    opcode_list[0x11].execute = ora_indirect_y; 
+                /*ADC OPCODES*/
+    opcode_list[0x69].execute = adc_immediate;
+    opcode_list[0x65].execute = adc_zeropage;
+    opcode_list[0x75].execute = adc_zeropage_x;
+    opcode_list[0x6D].execute = adc_absolute;
+    opcode_list[0x7D].execute = adc_absolute_x;
+    opcode_list[0x79].execute = adc_absolute_y;
+    opcode_list[0x61].execute = adc_indirect_x;
+    opcode_list[0x71].execute = adc_indirect_y;
+                /*CMP OPCODES*/
+    opcode_list[0xC9].execute = cmp_immediate;
+    opcode_list[0xC5].execute = cmp_zeropage;
+    opcode_list[0xD5].execute = cmp_zeropage_x;
+    opcode_list[0xCD].execute = cmp_absolute;
+    opcode_list[0xDD].execute = cmp_absolute_x;
+    opcode_list[0xD9].execute = cmp_absolute_y;
+    opcode_list[0xC1].execute = cmp_indirect_x;
+    opcode_list[0xD1].execute = cmp_indirect_y;
+                /*CPX OPCODES*/
+    opcode_list[0xE0].execute = cpx_immediate;
+    opcode_list[0xE4].execute = cpx_zeropage;
+    opcode_list[0xEC].execute = cpx_absolute;
+                /*CPY OPCODES*/
+    opcode_list[0xC0].execute = cpy_immediate;
+    opcode_list[0xC4].execute = cpy_zeropage;
+    opcode_list[0xCC].execute = cpy_absolute;
+                /*SBC OPCODES*/
+    opcode_list[0xE9].execute = sbc_immediate;
+    opcode_list[0xE5].execute = sbc_zeropage;
+    opcode_list[0xF5].execute = sbc_zeropage_x;
+    opcode_list[0xED].execute = sbc_absolute;
+    opcode_list[0xFD].execute = sbc_absolute_x;
+    opcode_list[0xF9].execute = sbc_absolute_y;
+    opcode_list[0xE1].execute = sbc_indirect_x;
+    opcode_list[0xF1].execute = sbc_indirect_y;
+                /*DEC OPCODES*/   
+    opcode_list[0xCE].execute = dec_absolute;
+    opcode_list[0xDE].execute = dec_absolute_x;
+    opcode_list[0xC6].execute = dec_zeropage;
+    opcode_list[0xD6].execute = dec_zeropage_x;
+                /*DEX, DEY OPCODES*/ 
+    opcode_list[0xCA].execute = dex_implied;
+    opcode_list[0x88].execute = dey_implied; 
+                /*INC OPCODES*/
+    opcode_list[0xEE].execute = inc_absolute;
+    opcode_list[0xFE].execute = inc_absolute_x;
+    opcode_list[0xE6].execute = inc_zeropage;
+    opcode_list[0xF6].execute = inc_zeropage_x;
+                /*INX, INY OPCODES*/ 
+    opcode_list[0xE8].execute = inx_implied;
+    opcode_list[0xC8].execute = iny_implied;     
+                /*BREAK OPCODES*/         
+    opcode_list[0x00].execute = brk_implied;
+    opcode_list[0x4C].execute = jmp_absolute;
+    opcode_list[0x6C].execute = jmp_indirect;
+    opcode_list[0x20].execute = jsr_absolute;
+    opcode_list[0x40].execute = rti_implied;
+    opcode_list[0x60].execute = rts_implied;
+                /*BRANCH OPCODES*/
+    opcode_list[0x90].execute = bcc_implied;
+    opcode_list[0xB0].execute = bcs_implied;
+    opcode_list[0xF0].execute = beq_implied;
+    opcode_list[0x30].execute = bmi_implied;
+    opcode_list[0xD0].execute = bne_implied;
+    opcode_list[0x10].execute = bpl_implied;
+    opcode_list[0x50].execute = bvc_implied;
+    opcode_list[0x70].execute = bvs_implied;
+                /*FLAGS OPCODES*/
+    opcode_list[0x18].execute = clc_implied;
+    opcode_list[0x38].execute = sec_implied;
+    opcode_list[0xD8].execute = cld_implied;
+    opcode_list[0xF8].execute = sed_implied;
+    opcode_list[0x58].execute = cli_implied;
+    opcode_list[0x78].execute = sei_implied;
+    opcode_list[0xB8].execute = clv_implied;
+                /*NOP OPCODE*/
+    opcode_list[0xEA].execute = nop_implied;
+}
+                                                            /*CPU STUFF*/
+void cpu_load_rom(CPU_6502* cpu, const char* filename){
+    FILE* f = fopen(filename, "rb");
+    if (!f) {
+        printf("ERROR: Can't open file %s\n", filename);
+        return;
+    }
+    
+    uint8_t header[16];
+    size_t read = fread(header, 1, 16, f);
+    if (read != 16) {
+        printf("ERROR: Can't read header\n");
+        fclose(f);
+        return;
+    }
+    
+    // Проверка заголовка
+    if (header[0] != 'N' || header[1] != 'E' || header[2] != 'S' || header[3] != 0x1A) {
+        printf("ERROR: Invalid NES header\n");
+        fclose(f);
+        return;
+    }
+    
+    int prg_rom_size = header[4] * 16384;  // 16KB units
+    int chr_rom_size = header[5] * 8192;   // 8KB units
+    
+    printf("PRG ROM: %d bytes\n", prg_rom_size);
+    printf("CHR ROM: %d bytes\n", chr_rom_size);
+    
+    // Определяем адрес загрузки
+    uint16_t load_addr;
+    if (prg_rom_size == 16384) {
+        // 16KB: грузим в 0x8000 и зеркалим в 0xC000
+        load_addr = 0x8000;
+        fread(cpu->ram + load_addr, 1, prg_rom_size, f);
+        memcpy(cpu->ram + 0xC000, cpu->ram + 0x8000, 16384);
+        printf("Loaded 16KB ROM at 0x8000, mirrored to 0xC000\n");
+    } 
+    else if (prg_rom_size == 32768) {
+        // 32KB: грузим в 0x8000 (заполняет 0x8000-0xFFFF)
+        load_addr = 0x8000;
+        fread(cpu->ram + load_addr, 1, prg_rom_size, f);
+        printf("Loaded 32KB ROM at 0x8000-0xFFFF\n");
+    }
+    else {
+        printf("ERROR: Unsupported PRG ROM size: %d bytes\n", prg_rom_size);
+        fclose(f);
+        return;
+    }
+    
+    // CHR ROM пропускаем (пока не нужен для CPU тестов)
+    if (chr_rom_size > 0) {
+        fseek(f, chr_rom_size, SEEK_CUR);
+        printf("Skipped CHR ROM (%d bytes)\n", chr_rom_size);
+    }
+    
+    fclose(f);
+}
+void cpu_load_bin(CPU_6502* cpu, const char* filename, uint16_t addr) {
+    FILE* f = fopen(filename, "rb");
+    if (!f) {
+        printf("ERROR: Can't open file %s\n", filename);
+        return;
+    }
+    
+    // Узнаём размер файла
+    fseek(f, 0, SEEK_END);
+    long size = ftell(f);
+    fseek(f, 0, SEEK_SET);
+    
+    // Проверяем, что файл не вылезет за пределы памяти
+    if (size > 65536 - addr) {
+        printf("ERROR: File too big (%ld bytes), max %d bytes at 0x%04X\n", 
+               size, 65536 - addr, addr);
+        fclose(f);
+        return;
+    }
+    
+    // Читаем файл прямо в память по указанному адресу
+    size_t bytes_read = fread(cpu->ram + addr, 1, size, f);
+    printf("Loaded %zu bytes at 0x%04X\n", bytes_read, addr);
+    
+    fclose(f);
+}
+
+uint8_t cpu_read(CPU_6502* cpu, uint16_t address){
+    return cpu->ram[address];
+}
+void cpu_write(CPU_6502* cpu, uint16_t address, uint8_t value){
+    cpu->ram[address] = value;
+}
+
+uint16_t cpu_read_reset_vector(CPU_6502* cpu){
+    uint8_t lo = cpu_read(cpu, 0xFFFC);
+    uint8_t hi = cpu_read(cpu, 0xFFFD);
+
+    uint16_t reset_vector = (hi << 8) | lo;
+
+    return reset_vector;
+
+}
+
+void cpu_init(CPU_6502* cpu){
+    memset(&cpu->ram, 0, 65536);
+    cpu->a = 0;
+    cpu->x = 0;
+    cpu->y = 0;
+    cpu->sp = 0xFD;
+    cpu->p = 0x24;
+    cpu->pc = cpu_read_reset_vector(cpu);
+    cpu->cycles = 7;
+    opcodes_init(cpu);
 }
 
 void cpu_step(CPU_6502* cpu){
     uint8_t opcode = cpu_read(cpu, cpu->pc);
     cpu->pc++;
-    opcode_list[opcode].execute(cpu);
-     
-   
-
+    opcode_list[opcode].execute(cpu); 
 }
-
 
