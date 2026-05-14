@@ -1,4 +1,3 @@
-<<<<<<< HEAD
 #include <stdio.h>
 
 int main() {
@@ -32,4 +31,3 @@ int main() {
       
     return 0;
 }
->>>>>>> b804f9881db6cb0c1afef769d013c672311b8c45
