@@ -1,6 +1,7 @@
 #include <stdint.h>
 #include "stdio.h"
 #include "6502.h"
+#include <string.h>
 #define ROM_SPACE (0xFFFF - 0x8000)
 
 
@@ -190,41 +191,31 @@ void opcodes_init(CPU_6502* cpu){
 }
   
                                                             /*CPU STUFF*/
-void cpu_load_rom(CPU_6502* cpu, const char* filename){
+void cpu_load_bin(CPU_6502* cpu, const char* filename) {
     FILE* f = fopen(filename, "rb");
-    if (!f) return;
+    if (!f) {
+        printf("Can't open file: %s\n", filename);
+        return;
+    }
     
-    uint8_t header[16];
-    size_t read = fread(header, 1, 16, f);
-    if (read != 16) {
+    fseek(f, 0, SEEK_END);
+    long size = ftell(f);
+    fseek(f, 0, SEEK_SET);
+    
+    if (size > 65536 - 0x8000) {
+        printf("File too big: %ld bytes\n", size);
         fclose(f);
         return;
     }
     
-    // Проверка заголовка
-    if (header[0] != 'N' || header[1] != 'E' || header[2] != 'S') {
-        fclose(f);
-        return;
-    }
-    
-    int prg_rom_size = header[4] * 16384;  // 16KB units
-    
-    // Проверка, что ROM не вылезет за пределы памяти
-    if (prg_rom_size > 32768) {  // обычно не больше 32KB
-        printf("ROM too big: %d bytes\n", prg_rom_size);
-        fclose(f);
-        return;
-    }
-    
-    size_t bytes_read = fread(cpu->ram + 0x8000, 1, prg_rom_size, f);
-    printf("Loaded %zu bytes at 0x8000\n", bytes_read);
+    size_t bytes_read = fread(cpu->ram + 0x8000, 1, size, f);
+    printf("Loaded %zu bytes at 0x%04X\n", bytes_read, 0x8000);
     
     fclose(f);
-
-    
 }
 
 void cpu_init(CPU_6502* cpu){
+    memset(cpu->ram, 0, sizeof(cpu->ram));
     cpu->a = 0;
     cpu->x = 0;
     cpu->y = 0;
@@ -233,7 +224,6 @@ void cpu_init(CPU_6502* cpu){
     cpu->pc = 0x8000;
     cpu->cycles = 0;
     opcodes_init(cpu);
-    cpu_load_rom(cpu, "6502_functional_test.bin");
 }
 
 uint8_t cpu_read(CPU_6502* cpu, uint16_t address){
@@ -241,6 +231,15 @@ uint8_t cpu_read(CPU_6502* cpu, uint16_t address){
 }
 void cpu_write(CPU_6502* cpu, uint16_t address, uint8_t value){
     cpu->ram[address] = value;
+}
+
+void cpu_step(CPU_6502* cpu){
+    uint8_t opcode = cpu_read(cpu, cpu->pc);
+    cpu->pc++;
+    opcode_list[opcode].execute(cpu);
+     
+   
+
 }
 
                                                           /*ADDRESS STUFF*/
@@ -2141,13 +2140,5 @@ void nop_implied(CPU_6502* cpu){
     return;
 }
 
-void cpu_step(CPU_6502* cpu){
-    uint8_t opcode = cpu_read(cpu, cpu->pc);
-    cpu->pc++;
-    opcode_list[opcode].execute(cpu);
-     
-   
-
-}
 
 

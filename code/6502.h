@@ -27,7 +27,7 @@ typedef struct {
 }Instruction;
 
 void opcodes_init(CPU_6502* cpu);
-void cpu_load_rom(CPU_6502* cpu, const char* filename);
+void cpu_load_bin(CPU_6502* cpu, const char* filename);
 void cpu_init(CPU_6502* cpu);
 uint8_t cpu_read(CPU_6502* cpu, uint16_t address);
 void cpu_write(CPU_6502* cpu, uint16_t address, uint8_t value);
@@ -218,6 +218,6 @@ void cli_implied(CPU_6502* cpu);
 void sei_implied(CPU_6502* cpu);
 void clv_implied(CPU_6502* cpu);
 void nop_implied(CPU_6502* cpu);
-void cpu_step(CPU_6502* cpu);
+int cpu_step(CPU_6502* cpu);
 
 #endif
