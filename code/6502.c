@@ -214,6 +214,40 @@ void cpu_load_bin(CPU_6502* cpu, const char* filename) {
     fclose(f);
 }
 
+void cpu_load_rom(CPU_6502* cpu, const char* filename){
+    FILE* f = fopen(filename, "rb");
+    if (!f) return;
+    
+    uint8_t header[16];
+    size_t read = fread(header, 1, 16, f);
+    if (read != 16) {
+        fclose(f);
+        return;
+    }
+    
+    // Проверка заголовка
+    if (header[0] != 'N' || header[1] != 'E' || header[2] != 'S') {
+        fclose(f);
+        return;
+    }
+    
+    int prg_rom_size = header[4] * 16384;  // 16KB units
+    
+    // Проверка, что ROM не вылезет за пределы памяти
+    if (prg_rom_size > 32768) {  // обычно не больше 32KB
+        printf("ROM too big: %d bytes\n", prg_rom_size);
+        fclose(f);
+        return;
+    }
+    
+    size_t bytes_read = fread(cpu->ram + 0x8000, 1, prg_rom_size, f);
+    printf("Loaded %zu bytes at 0x8000\n", bytes_read);
+    
+    fclose(f);
+
+    
+}
+
 void cpu_init(CPU_6502* cpu){
     memset(cpu->ram, 0, sizeof(cpu->ram));
     cpu->a = 0;
