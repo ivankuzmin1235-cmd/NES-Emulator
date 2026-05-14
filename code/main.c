@@ -1,10 +1,3 @@
-#include <stdio.h>
-
-int main() {
-    printf("HELLO DENIS");
-    return 0;
-}
-=======
 #include "6502.h"
 #include <stdio.h>
 #include <stdlib.h>
