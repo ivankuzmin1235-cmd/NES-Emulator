@@ -29,7 +29,7 @@ extern Instruction opcode_list[0xFF];
 void opcodes_init(CPU_6502* cpu);
 void cpu_load_rom(CPU_6502* cpu, const char* filename);
 void cpu_load_bin(CPU_6502* cpu, const char* filename, uint16_t addr);
-void cpu_init(CPU_6502* cpu);
+void cpu_init(CPU_6502* cpu, const char* filename);
 uint8_t cpu_read(CPU_6502* cpu, uint16_t address);
 void cpu_write(CPU_6502* cpu, uint16_t address, uint8_t value);
 uint16_t get_absolute_addr(CPU_6502* cpu);

@@ -2,6 +2,7 @@
 #include "stdio.h"
 #include "6502.h"
 #include <string.h>
+#include <stdlib.h>
 #define ROM_SPACE (0xFFFF - 0x8000)
 
 
@@ -2128,7 +2129,7 @@ void cpu_load_rom(CPU_6502* cpu, const char* filename){
         load_addr = 0x8000;
         fread(cpu->ram + load_addr, 1, prg_rom_size, f);
         memcpy(cpu->ram + 0xC000, cpu->ram + 0x8000, 16384);
-        printf("Loaded 16KB ROM at 0x8000, mirrored to 0xC000\n");
+        printf("Loaded 16KB ROM at 0x8000\n");
     } 
     else if (prg_rom_size == 32768) {
         // 32KB: грузим в 0x8000 (заполняет 0x8000-0xFFFF)
@@ -2194,8 +2195,10 @@ uint16_t cpu_read_reset_vector(CPU_6502* cpu){
 
 }
 
-void cpu_init(CPU_6502* cpu){
+void cpu_init(CPU_6502* cpu, const char* filename){
     memset(&cpu->ram, 0, 65536);
+    cpu_load_rom(cpu, filename);
+      
     cpu->a = 0;
     cpu->x = 0;
     cpu->y = 0;
@@ -2203,12 +2206,24 @@ void cpu_init(CPU_6502* cpu){
     cpu->p = 0x24;
     cpu->pc = cpu_read_reset_vector(cpu);
     cpu->cycles = 7;
+    
+
     opcodes_init(cpu);
 }
 
 void cpu_step(CPU_6502* cpu){
     uint8_t opcode = cpu_read(cpu, cpu->pc);
-    cpu->pc++;
-    opcode_list[opcode].execute(cpu); 
+    
+     
+
+    if (opcode_list[opcode].execute == NULL) {/*For illegal opcodes*/
+        cpu->pc++;
+        cpu->cycles += 2;
+    }
+    else{
+        cpu->pc++;
+        opcode_list[opcode].execute(cpu);
+    }
+    
 }
 

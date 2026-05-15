@@ -5,19 +5,9 @@
 
 int main() {
     CPU_6502 cpu;
-    cpu_init(&cpu);
+ 
+    cpu_init(&cpu, "nestest.nes");
     
-    cpu_load_rom(&cpu, "nestest.nes");
-
-    for (int i = 0; i < 128; i++)
-    {
-        printf("%x", cpu.ram[0x8000 + i]);
-    }
-    
-    
-    
-    
-    /*
     while(1){
         cpu_step(&cpu);
         if(cpu.ram[0x02] != 0 || cpu.ram[0x03] != 0) {
@@ -30,6 +20,5 @@ int main() {
             break;
     }
     }
-     */ 
     return 0;
 }
