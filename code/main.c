@@ -7,33 +7,20 @@
 int main() {
 
     CPU_6502 cpu;
-    
-    cpu_init(&cpu);
-    
-    cpu_load_rom(&cpu, "nestest.nes");
-    
-
-    cpu.pc = 0xC000;
-    cpu.sp = 0xFD;
-    cpu.p = 0x24;
-
-    for (int i = 0; i < 128; i++)
-    {
-        printf("%x", cpu.ram[0x8000 + i]);
-    }
+ 
+    cpu_init(&cpu, "nestest.nes");
     
     while(1){
         cpu_step(&cpu);
-        
-        // Проверяем результаты в $02 и $03
         if(cpu.ram[0x02] != 0 || cpu.ram[0x03] != 0) {
-            printf("Test failed! Error code: %02X%02X\n", cpu.ram[0x03], cpu.ram[0x02]);
+            uint16_t error = (cpu.ram[0x03] << 8) | cpu.ram[0x02];
+            if(error == 0) {
+                printf("✅ ALL TESTS PASSED!\n");
+            } else {
+                printf("❌ TEST FAILED! Error code: %04X\n", error);
+            }
             break;
-        }
-        
     }
-    
-    
-      
+    }
     return 0;
 }
