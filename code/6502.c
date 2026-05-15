@@ -20,8 +20,10 @@ uint16_t get_absolute_x_addr(CPU_6502* cpu, uint8_t* extra_cycle){
     uint8_t m_addr_hi = cpu_read(cpu, cpu->pc++);
     uint16_t m_base_addr = (m_addr_hi << 8) | m_addr_lo;
     uint16_t m_addr = m_base_addr + cpu->x;
+    if(extra_cycle != NULL){
+        *extra_cycle = ((m_base_addr & 0xFF00) != (m_addr & 0xFF00)) ? 1 : 0;/*Проверка перехода*/
+    }
     
-    *extra_cycle = ((m_base_addr & 0xFF00) != (m_addr & 0xFF00)) ? 1 : 0;/*Проверка перехода*/
     
 
     return m_addr;
@@ -32,7 +34,9 @@ uint16_t get_absolute_y_addr(CPU_6502* cpu, uint8_t* extra_cycle){
     uint16_t m_base_addr = (m_addr_hi << 8) | m_addr_lo;
     uint16_t m_addr = m_base_addr + cpu->y;
 
-    *extra_cycle = ((m_base_addr & 0xFF00) != (m_addr & 0xFF00)) ? 1 : 0;
+    if(extra_cycle != NULL){
+        *extra_cycle = ((m_base_addr & 0xFF00) != (m_addr & 0xFF00)) ? 1 : 0;/*Проверка перехода*/
+    }
 
     return m_addr;
 
@@ -71,7 +75,9 @@ uint16_t get_indirect_y_addr(CPU_6502* cpu, uint8_t* extra_cycle){
     uint16_t m_base_addr = (m_addr_hi << 8) | m_addr_lo;
     uint16_t m_addr = m_base_addr + cpu->y;
 
-    *extra_cycle = ((m_base_addr & 0xFF00) != (m_addr & 0xFF00)) ? 1 : 0;
+    if(extra_cycle != NULL){
+        *extra_cycle = ((m_base_addr & 0xFF00) != (m_addr & 0xFF00)) ? 1 : 0;/*Проверка перехода*/
+    }
 
     return m_addr;
 }
