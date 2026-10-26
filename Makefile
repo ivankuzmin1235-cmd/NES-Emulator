@@ -1,20 +1,20 @@
-# Здесь выбираем комплилятор и флаги (вывод ошибок, если что-то пойдет не так, стандарт языка и тд)
-compiler = gcc
-cflags = -Wall -Wextra -std=c11 -Iinclude
+CC = gcc
+CFLAGS = -Wall -Wextra -std=c11 -Isource/CPU_6502
 
-# Тут производим поиск всех .с файлов в папке с кодом, после чего компилируем их по отдельности
-code = $(wildcard code/*.c)
-obj = $(code:.c=.o)
+SOURCES = $(wildcard source/*.c) $(wildcard source/CPU_6502/*.c)
+OBJECTS = $(patsubst source/%.c,build/%.o,$(SOURCES))
+TARGET = build/nes-emulator
 
-# Выбираем имя скомпилированной программы
-target = nes-emulator
+.PHONY: all clean
 
-# Здесь собираем основную программу из скомпилированных файлов в предыдущем шаге
-$(target): $(obj)
-	$(compiler) $(cflags) -o $(target) $(obj)
-    
-# Убираем за собой :)
+all: $(TARGET)
+
+$(TARGET): $(OBJECTS)
+	$(CC) $(CFLAGS) $(OBJECTS) -o $@
+
+build/%.o: source/%.c
+	mkdir -p $(dir $@)
+	$(CC) $(CFLAGS) -c $< -o $@
+
 clean:
-	rm -f $(obj) $(target)
-
-.PHONY: clean
+	rm -rf build

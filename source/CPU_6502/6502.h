@@ -25,9 +25,8 @@ typedef struct {
 
 }Instruction;
 
-extern Instruction opcode_list[0xFF];
+extern Instruction opcode_list[0x100];
 void opcodes_init(CPU_6502* cpu);
-void cpu_load_bin(CPU_6502* cpu, const char* filename);
 void cpu_load_rom(CPU_6502* cpu, const char* filename);
 void cpu_load_bin(CPU_6502* cpu, const char* filename, uint16_t addr);
 void cpu_init(CPU_6502* cpu, const char* filename);

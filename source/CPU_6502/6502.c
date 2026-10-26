@@ -1753,7 +1753,7 @@ void bcc_implied(CPU_6502* cpu){
     uint16_t old_pc = cpu->pc;
     
     
-    if(cpu->p & FLAG_CARRY == 0){
+    if((cpu->p & FLAG_CARRY) == 0){
         cpu->pc += offset;
         t = 1;
         if((old_pc & 0xFF00) != (cpu->pc & 0xFF00)) {
@@ -1819,7 +1819,7 @@ void bne_implied(CPU_6502* cpu){
     uint16_t old_pc = cpu->pc;
     
     
-    if(cpu->p & FLAG_ZERO == 0){
+    if((cpu->p & FLAG_ZERO) == 0){
         cpu->pc += offset;
         t = 1;
         if((old_pc & 0xFF00) != (cpu->pc & 0xFF00)) {
@@ -1835,7 +1835,7 @@ void bpl_implied(CPU_6502* cpu){
     uint16_t old_pc = cpu->pc;
     
     
-    if(cpu->p & FLAG_NEGATIVE == 0){
+    if((cpu->p & FLAG_NEGATIVE) == 0){
         cpu->pc += offset;
         t = 1;
         if((old_pc & 0xFF00) != (cpu->pc & 0xFF00)) {
@@ -1851,7 +1851,7 @@ void bvc_implied(CPU_6502* cpu){
     uint16_t old_pc = cpu->pc;
     
     
-    if(cpu->p & FLAG_OVERFLOW == 0){
+    if((cpu->p & FLAG_OVERFLOW) == 0){
         cpu->pc += offset;
         t = 1;
         if((old_pc & 0xFF00) != (cpu->pc & 0xFF00)) {
@@ -1915,7 +1915,7 @@ void nop_implied(CPU_6502* cpu){
 
 
                                                             /*OPCODES STUFF*/
-Instruction opcode_list[0xFF];
+Instruction opcode_list[0x100];
 
 void opcodes_init(CPU_6502* cpu){
                 /*LDA OPCODES*/

@@ -56,3 +56,11 @@ dkms.conf
 *.bin
 *.bin:Zone.Identifier
 *.nes
+
+# Build output
+/build/
+/nes-emulator
+/source/emulator
+
+# Nes test ROM
+/nestest.nes
