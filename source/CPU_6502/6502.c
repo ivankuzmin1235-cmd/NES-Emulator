@@ -102,12 +102,12 @@ void lda_immediate(CPU_6502* cpu){
     lda_flags_do(cpu);
     cpu->cycles += 2;
 }
-void lda_absolute(CPU_6502* cpu){
-    uint16_t m_addr = get_absolute_addr(cpu);/*Адрес*/
-    uint8_t m = cpu_read(cpu, m_addr);/*Читаем*/
-    cpu->a = m;/*Кладём*/
-    lda_flags_do(cpu);/*Делаем флаги*/
-    cpu->cycles += 4;/*увеличиваем кол-во циклов*/
+void lda_absolute(CPU_6502* cpu) {
+    uint16_t m_addr = get_absolute_addr(cpu);
+    uint8_t m = cpu_read(cpu, m_addr);
+    cpu->a = m;
+    lda_flags_do(cpu);
+    cpu->cycles += 4;
 }
 void lda_absolute_x(CPU_6502* cpu){
     uint8_t extra;
@@ -1120,7 +1120,7 @@ void dey_implied(CPU_6502* cpu){
 
     cpu->y = cpu->y - 1;
 
-    dex_flags_do(cpu);
+    dey_flags_do(cpu);
     cpu->cycles += 2;
 }
 
@@ -1157,9 +1157,9 @@ void inc_absolute_x(CPU_6502* cpu){
 }
 void inc_zeropage(CPU_6502* cpu){
     uint16_t m_addr = get_zeropage_addr(cpu);
-    uint8_t m = cpu_read(cpu, m_addr) -+ 1;
+    uint8_t m = cpu_read(cpu, m_addr) + 1;
     cpu_write(cpu, m_addr, m);
-    dec_flags_do(cpu, m);
+    inc_flags_do(cpu, m);
 
     cpu->cycles += 5;
 }
@@ -1167,7 +1167,7 @@ void inc_zeropage_x(CPU_6502* cpu){
     uint16_t m_addr = get_zeropage_x_addr(cpu);
     uint8_t m = cpu_read(cpu, m_addr) + 1;
     cpu_write(cpu, m_addr, m);
-    dec_flags_do(cpu, m);
+    inc_flags_do(cpu, m);
 
     cpu->cycles += 6;
 }
@@ -1829,20 +1829,21 @@ void bne_implied(CPU_6502* cpu){
     cpu->cycles += 2 + t + p;  
 }
 void bpl_implied(CPU_6502* cpu){
-    uint8_t offset = (int8_t)cpu_read(cpu, cpu->pc++);
+    int8_t offset = (int8_t)cpu_read(cpu, cpu->pc++);
     uint8_t t = 0;
     uint8_t p = 0;
     uint16_t old_pc = cpu->pc;
-    
-    
+
     if((cpu->p & FLAG_NEGATIVE) == 0){
         cpu->pc += offset;
         t = 1;
-        if((old_pc & 0xFF00) != (cpu->pc & 0xFF00)) {
+
+        if((old_pc & 0xFF00) != (cpu->pc & 0xFF00)){
             p = 1;
         }
     }
-    cpu->cycles += 2 + t + p;  
+
+    cpu->cycles += 2 + t + p;
 }
 void bvc_implied(CPU_6502* cpu){
     uint8_t offset = (int8_t)cpu_read(cpu, cpu->pc++);
@@ -2195,10 +2196,9 @@ uint16_t cpu_read_reset_vector(CPU_6502* cpu){
     uint8_t lo = cpu_read(cpu, 0xFFFC);
     uint8_t hi = cpu_read(cpu, 0xFFFD);
 
-    uint16_t reset_vector = (hi << 8) | lo;
+    uint16_t reset_vector = ((uint16_t)hi << 8) | lo;
 
     return reset_vector;
-
 }
 
 void cpu_init(CPU_6502* cpu, const char* filename){

@@ -14,7 +14,7 @@ int main() {
     
     for (unsigned long i = 0; i < 1000000; i++) {
         if(i < 20) {
-            printf("Step %lu: PC=$%04X OPCODE=$%02X A=$%02X X=$%02X P=$%02X SP=$%02X\n", i, cpu.pc, cpu_read(&cpu, cpu.pc), cpu.a, cpu.x, cpu.y, cpu.p, cpu.sp);
+            printf("Step %lu: PC=$%04X OPCODE=$%02X A=$%02X X=$%02X Y=$%02X P=$%02X SP=$%02X\n", i, cpu.pc, cpu_read(&cpu, cpu.pc), cpu.a, cpu.x, cpu.y, cpu.p, cpu.sp);
         }
         cpu_step(&cpu);
         if(cpu.ram[0x02] != 0 || cpu.ram[0x03] != 0) {
