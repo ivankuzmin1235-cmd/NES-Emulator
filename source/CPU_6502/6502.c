@@ -450,7 +450,9 @@ void pha_implied(CPU_6502* cpu){
 }
                                                             /*PHP STUFF*/
 void php_implied(CPU_6502* cpu){
+    uint8_t status = cpu->p | 0x30;
     cpu_write(cpu, 0x0100 + cpu->sp, cpu->p);
+    cpu->sp--;
 
     cpu->cycles+=3;
 }
@@ -1260,6 +1262,9 @@ void asl_absolute(CPU_6502* cpu){
     
     // Сдвигаем влево
     m <<= 1;
+
+    // Сохраняем результат в памяти
+    cpu_write(cpu, m_addr, m);
     
     // Устанавливаем Carry
     if(carry) {
@@ -1278,6 +1283,9 @@ void asl_absolute_x(CPU_6502* cpu){
     
     // Сдвигаем влево
     m <<= 1;
+
+    // Сохраняем результат в памяти
+    cpu_write(cpu, m_addr, m);
     
     // Устанавливаем Carry
     if(carry) {
@@ -1296,6 +1304,9 @@ void asl_zeropage(CPU_6502* cpu){
     
     // Сдвигаем влево
     m <<= 1;
+
+    // Сохраняем результат в памяти
+    cpu_write(cpu, m_addr, m);
     
     // Устанавливаем Carry
     if(carry) {
@@ -1314,6 +1325,9 @@ void asl_zeropage_x(CPU_6502* cpu){
     
     // Сдвигаем влево
     m <<= 1;
+
+    // Сохраняем результат в памяти
+    cpu_write(cpu, m_addr, m);
     
     // Устанавливаем Carry
     if(carry) {
@@ -1358,6 +1372,9 @@ void lsr_absolute(CPU_6502* cpu){
     
     // Сдвигаем влево
     m >>= 1;
+
+    // Сохраняем результат в памяти
+    cpu_write(cpu, m_addr, m);
     
     // Устанавливаем Carry
     if(carry) {
@@ -1376,6 +1393,9 @@ void lsr_absolute_x(CPU_6502* cpu){
     
     // Сдвигаем влево
     m >>= 1;
+
+    // Сохраняем результат в памяти
+    cpu_write(cpu, m_addr, m);
     
     // Устанавливаем Carry
     if(carry) {
@@ -1394,6 +1414,9 @@ void lsr_zeropage(CPU_6502* cpu){
     
     // Сдвигаем влево
     m >>= 1;
+
+    // Сохраняем результат в памяти
+    cpu_write(cpu, m_addr, m);
     
     // Устанавливаем Carry
     if(carry) {
@@ -1410,6 +1433,8 @@ void lsr_zeropage_x(CPU_6502* cpu){
     uint8_t carry = (m & 0x01) ? 1 : 0;
     // Сдвигаем влево
     m >>= 1;
+    // Сохраняем результат в памяти
+    cpu_write(cpu, m_addr, m);
     if(carry) {
         cpu->p |= FLAG_CARRY;
     } else {
@@ -1419,15 +1444,18 @@ void lsr_zeropage_x(CPU_6502* cpu){
     cpu->cycles += 6;
 }
                                                             /*ROL STUFF*/
-void rol_flags_do(CPU_6502* cpu, uint8_t m){
-    if(m == 0){
+void rol_flags_do(CPU_6502* cpu, uint8_t m) {
+    if (m == 0) {
         cpu->p |= FLAG_ZERO;
-    }
-    else{
+    } else {
         cpu->p &= ~FLAG_ZERO;
     }
-    cpu->p &= ~FLAG_NEGATIVE;
-    
+
+    if (m & 0x80) {
+        cpu->p |= FLAG_NEGATIVE;
+    } else {
+        cpu->p &= ~FLAG_NEGATIVE;
+    }
 }
 void rol_accumulator(CPU_6502* cpu){
     // Сохраняем старый Carry
@@ -1461,6 +1489,9 @@ void rol_absolute(CPU_6502* cpu){
     
     // Сдвигаем A влево и добавляем старый Carry в младший бит
     m = (m << 1) | old_carry;
+
+    // Сохраняем результат в памяти
+    cpu_write(cpu, m_addr, m);
     
     // Устанавливаем новый Carry
     if(new_carry) {
@@ -1484,6 +1515,9 @@ void rol_absolute_x(CPU_6502* cpu){
     
     // Сдвигаем A влево и добавляем старый Carry в младший бит
     m = (m << 1) | old_carry;
+
+    // Сохраняем результат в памяти
+    cpu_write(cpu, m_addr, m);
     
     // Устанавливаем новый Carry
     if(new_carry) {
@@ -1507,6 +1541,9 @@ void rol_zeropage(CPU_6502* cpu){
     
     // Сдвигаем A влево и добавляем старый Carry в младший бит
     m = (m << 1) | old_carry;
+
+    // Сохраняем результат в памяти
+    cpu_write(cpu, m_addr, m);
     
     // Устанавливаем новый Carry
     if(new_carry) {
@@ -1530,6 +1567,9 @@ void rol_zeropage_x(CPU_6502* cpu){
     
     // Сдвигаем A влево и добавляем старый Carry в младший бит
     m = (m << 1) | old_carry;
+
+    // Сохраняем результат в памяти
+    cpu_write(cpu, m_addr, m);
     
     // Устанавливаем новый Carry
     if(new_carry) {
@@ -1542,15 +1582,18 @@ void rol_zeropage_x(CPU_6502* cpu){
     cpu->cycles += 6;
 }
                                                             /*ROR STUFF*/
-void ror_flags_do(CPU_6502* cpu, uint8_t m){
-    if(m == 0){
+void ror_flags_do(CPU_6502* cpu, uint8_t m) {
+    if (m == 0) {
         cpu->p |= FLAG_ZERO;
-    }
-    else{
+    } else {
         cpu->p &= ~FLAG_ZERO;
     }
-    cpu->p &= ~FLAG_NEGATIVE;
-    
+
+    if (m & 0x80) {
+        cpu->p |= FLAG_NEGATIVE;
+    } else {
+        cpu->p &= ~FLAG_NEGATIVE;
+    }
 }
 void ror_accumulator(CPU_6502* cpu){
     // Сохраняем старый Carry
@@ -1666,7 +1709,7 @@ void ror_zeropage_x(CPU_6502* cpu){
 }
                                                             /*BRK STUFF*/
 void brk_implied(CPU_6502* cpu){
-    cpu->pc += 2;
+    cpu->pc += 1;
 
     cpu_write(cpu, 0x0100 + cpu->sp, (cpu->pc >> 8) & 0xFF);/*Hi byte first*/
     cpu->sp--;
@@ -1689,10 +1732,10 @@ void brk_implied(CPU_6502* cpu){
 }
                                                             /*JMP STUFF*/
 void jmp_absolute(CPU_6502* cpu){
-    uint8_t hi = cpu_read(cpu, cpu->pc++);
     uint8_t lo = cpu_read(cpu, cpu->pc++);
+    uint8_t hi = cpu_read(cpu, cpu->pc++);
 
-    cpu->pc = (hi << 8) | lo;
+    cpu->pc = ((uint16_t)hi << 8) | lo;
     cpu->cycles += 3; 
 }
 void jmp_indirect(CPU_6502* cpu){
@@ -1756,7 +1799,7 @@ void rts_implied(CPU_6502* cpu){
 }
                                                             /*BRANCH  STUFF*/
 void bcc_implied(CPU_6502* cpu){
-    uint8_t offset = (int8_t)cpu_read(cpu, cpu->pc++);
+    int8_t offset = (int8_t)cpu_read(cpu, cpu->pc++);
     uint8_t t = 0;
     uint8_t p = 0;
     uint16_t old_pc = cpu->pc;
@@ -1773,7 +1816,7 @@ void bcc_implied(CPU_6502* cpu){
     
 }
 void bcs_implied(CPU_6502* cpu){
-    uint8_t offset = (int8_t)cpu_read(cpu, cpu->pc++);
+    int8_t offset = (int8_t)cpu_read(cpu, cpu->pc++);
     uint8_t t = 0;
     uint8_t p = 0;
     uint16_t old_pc = cpu->pc;
@@ -1790,7 +1833,7 @@ void bcs_implied(CPU_6502* cpu){
     
 }
 void beq_implied(CPU_6502* cpu){
-    uint8_t offset = (int8_t)cpu_read(cpu, cpu->pc++);
+    int8_t offset = (int8_t)cpu_read(cpu, cpu->pc++);
     uint8_t t = 0;
     uint8_t p = 0;
     uint16_t old_pc = cpu->pc;
@@ -1806,7 +1849,7 @@ void beq_implied(CPU_6502* cpu){
     cpu->cycles += 2 + t + p;  
 }
 void bmi_implied(CPU_6502* cpu){
-    uint8_t offset = (int8_t)cpu_read(cpu, cpu->pc++);
+    int8_t offset = (int8_t)cpu_read(cpu, cpu->pc++);
     uint8_t t = 0;
     uint8_t p = 0;
     uint16_t old_pc = cpu->pc;
@@ -1822,7 +1865,7 @@ void bmi_implied(CPU_6502* cpu){
     cpu->cycles += 2 + t + p;  
 }
 void bne_implied(CPU_6502* cpu){
-    uint8_t offset = (int8_t)cpu_read(cpu, cpu->pc++);
+    int8_t offset = (int8_t)cpu_read(cpu, cpu->pc++);
     uint8_t t = 0;
     uint8_t p = 0;
     uint16_t old_pc = cpu->pc;
@@ -1855,7 +1898,7 @@ void bpl_implied(CPU_6502* cpu){
     cpu->cycles += 2 + t + p;
 }
 void bvc_implied(CPU_6502* cpu){
-    uint8_t offset = (int8_t)cpu_read(cpu, cpu->pc++);
+    int8_t offset = (int8_t)cpu_read(cpu, cpu->pc++);
     uint8_t t = 0;
     uint8_t p = 0;
     uint16_t old_pc = cpu->pc;
@@ -1871,7 +1914,7 @@ void bvc_implied(CPU_6502* cpu){
     cpu->cycles += 2 + t + p;  
 }
 void bvs_implied(CPU_6502* cpu){
-    uint8_t offset = (int8_t)cpu_read(cpu, cpu->pc++);
+    int8_t offset = (int8_t)cpu_read(cpu, cpu->pc++);
     uint8_t t = 0;
     uint8_t p = 0;
     uint16_t old_pc = cpu->pc;
@@ -2143,14 +2186,27 @@ void cpu_load_rom(CPU_6502* cpu, const char* filename){
     if (prg_rom_size == 16384) {
         // 16KB: грузим в 0x8000 и зеркалим в 0xC000
         load_addr = 0x8000;
-        fread(cpu->ram + load_addr, 1, prg_rom_size, f);
+
+        size_t bytes_read = fread(cpu->ram + load_addr, 1, prg_rom_size, f);
+
+        if (bytes_read != (size_t)prg_rom_size) {
+            printf("ERROR: Incomplete PRG ROM read\n");
+            fclose(f);
+            return;
+        }
         memcpy(cpu->ram + 0xC000, cpu->ram + 0x8000, 16384);
         printf("Loaded 16KB ROM at 0x8000\n");
-    } 
+    }
     else if (prg_rom_size == 32768) {
         // 32KB: грузим в 0x8000 (заполняет 0x8000-0xFFFF)
         load_addr = 0x8000;
-        fread(cpu->ram + load_addr, 1, prg_rom_size, f);
+        size_t bytes_read = fread(cpu->ram + load_addr, 1, prg_rom_size, f);
+        if (bytes_read != (size_t)prg_rom_size) {
+            printf("ERROR: Incomplete PRG ROM read\n");
+            fclose(f);
+            return;
+        }
+
         printf("Loaded 32KB ROM at 0x8000-0xFFFF\n");
     }
     else {
