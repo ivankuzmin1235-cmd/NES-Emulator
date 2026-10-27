@@ -1,5 +1,9 @@
 # NES Emulator
 
+<p aling ="center">
+    <img src="docs/images/nes.jpg" alt="NES Emulator" width="700">
+</p>
+
 An NES emulator written in C. The project is currently focused on
 implementing the MOS 6502 CPU and testing its instructions.
 
