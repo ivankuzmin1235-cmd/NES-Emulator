@@ -1143,7 +1143,7 @@ void inc_absolute(CPU_6502* cpu){
     uint16_t m_addr = get_absolute_addr(cpu);
     uint8_t m = cpu_read(cpu, m_addr) + 1;
     cpu_write(cpu, m_addr, m);
-    dec_flags_do(cpu, m);
+    inc_flags_do(cpu, m);
 
     cpu->cycles += 6;
 }
@@ -1151,7 +1151,7 @@ void inc_absolute_x(CPU_6502* cpu){
     uint16_t m_addr = get_absolute_x_addr(cpu, NULL);
     uint8_t m = cpu_read(cpu, m_addr) + 1;
     cpu_write(cpu, m_addr, m);
-    dec_flags_do(cpu, m);
+    inc_flags_do(cpu, m);
 
     cpu->cycles += 7;
 }
@@ -1189,7 +1189,7 @@ void inx_flags_do(CPU_6502* cpu){
 void inx_implied(CPU_6502* cpu){
     cpu->x = cpu->x + 1;
 
-    dex_flags_do(cpu);
+    inx_flags_do(cpu);
     cpu->cycles += 2;
 }
                                                             /*INY STUFF*/
@@ -1210,7 +1210,7 @@ void iny_flags_do(CPU_6502* cpu){
 void iny_implied(CPU_6502* cpu){
     cpu->y = cpu->y + 1;
 
-    dex_flags_do(cpu);
+    iny_flags_do(cpu);
     cpu->cycles += 2;
 }
                                                             /*ASL STUFF*/

@@ -64,3 +64,6 @@ dkms.conf
 
 # Nes test ROM
 /nestest.nes
+
+# CPU tests
+/tests/
