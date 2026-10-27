@@ -1,7 +1,7 @@
 # NES Emulator
 
 <p aling ="center">
-    <img src="docs/images/nes.jpg" alt="NES Emulator" width="700">
+    <img src="docs/images/nes.jpg" alt="NES Emulator" width="800">
 </p>
 
 An NES emulator written in C. The project is currently focused on
