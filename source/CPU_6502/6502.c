@@ -956,32 +956,41 @@ void cpy_absolute(CPU_6502* cpu) {
 }
                                                             /*SBC STUFF*/
 void sbc_flags_and_store(CPU_6502* cpu, uint8_t operand) {
-    uint8_t inverted = ~operand;
+    uint8_t old_a = cpu->a;
     uint8_t carry_in = (cpu->p & FLAG_CARRY) ? 1 : 0;
-    uint16_t sum = cpu->a + inverted + carry_in;
-    
-    if (((cpu->a ^ inverted) & 0x80) == 0 && ((cpu->a ^ sum) & 0x80) != 0)
+
+    uint16_t sum = (uint16_t)old_a
+                 + (uint8_t)(~operand)
+                 + carry_in;
+
+    uint8_t result = (uint8_t)sum;
+
+    if (((old_a ^ operand) & 0x80) != 0 &&
+        ((old_a ^ result) & 0x80) != 0) {
         cpu->p |= FLAG_OVERFLOW;
-    else
-        cpu->p &= ~FLAG_OVERFLOW;
-    
-    if (sum > 0xFF)
+    } else {
+        cpu->p &= (uint8_t)~FLAG_OVERFLOW;
+    }
+
+    if (sum > 0xFF) {
         cpu->p |= FLAG_CARRY;
-    else
-        cpu->p &= ~FLAG_CARRY;
-    
-    uint8_t result = sum & 0xFF;
+    } else {
+        cpu->p &= (uint8_t)~FLAG_CARRY;
+    }
+
     cpu->a = result;
-    
-    if (result == 0)
+
+    if (result == 0) {
         cpu->p |= FLAG_ZERO;
-    else
-        cpu->p &= ~FLAG_ZERO;
-    
-    if (result & 0x80)
+    } else {
+        cpu->p &= (uint8_t)~FLAG_ZERO;
+    }
+
+    if (result & 0x80) {
         cpu->p |= FLAG_NEGATIVE;
-    else
-        cpu->p &= ~FLAG_NEGATIVE;
+    } else {
+        cpu->p &= (uint8_t)~FLAG_NEGATIVE;
+    }
 }
 void sbc_immediate(CPU_6502* cpu) {
     uint8_t operand = cpu_read(cpu, cpu->pc++);
