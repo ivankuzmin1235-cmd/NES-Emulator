@@ -451,7 +451,7 @@ void pha_implied(CPU_6502* cpu){
                                                             /*PHP STUFF*/
 void php_implied(CPU_6502* cpu){
     uint8_t status = cpu->p | 0x30;
-    cpu_write(cpu, 0x0100 + cpu->sp, cpu->p);
+    cpu_write(cpu, 0x0100 + cpu->sp, status);
     cpu->sp--;
 
     cpu->cycles+=3;
@@ -1755,7 +1755,7 @@ void jmp_indirect(CPU_6502* cpu){
 void jsr_absolute(CPU_6502* cpu){
     uint16_t sub_addr = get_absolute_addr(cpu);
 
-    uint8_t prev_ins = cpu->pc - 1;
+    uint16_t prev_ins = cpu->pc - 1;
 
     cpu_write(cpu, 0x0100 + cpu->sp,(prev_ins >> 8) & 0xFF);
     cpu->sp--;
