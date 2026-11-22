@@ -51,9 +51,8 @@ uint16_t get_zeropage_x_addr(CPU_6502* cpu){
 
     return m_addr;
 }
-uint16_t get_zeropage_y_addr(CPU_6502* cpu){
+uint16_t get_zeropage_y_addr(CPU_6502* cpu) {
     uint16_t m_addr = (cpu_read(cpu, cpu->pc++) + cpu->y) & 0xFF;
-
     return m_addr;
 }
 uint16_t get_indirect_x_addr(CPU_6502* cpu){
@@ -233,10 +232,11 @@ void ldy_absolute(CPU_6502* cpu){
     ldy_flags_do(cpu);/*Делаем флаги*/
     cpu->cycles += 4;/*увеличиваем кол-во циклов*/
 }
-void ldy_absolute_y(CPU_6502* cpu){
+void ldy_absolute_x(CPU_6502* cpu) {
     uint8_t extra;
-    uint16_t m_addr = get_absolute_y_addr(cpu, &extra);
+    uint16_t m_addr = get_absolute_x_addr(cpu, &extra);
     uint8_t m = cpu_read(cpu, m_addr);
+
     cpu->y = m;
     ldy_flags_do(cpu);
     cpu->cycles += 4 + extra;
@@ -248,8 +248,8 @@ void ldy_zeropage(CPU_6502* cpu){
     ldy_flags_do(cpu);
     cpu->cycles += 3;
 }
-void ldy_zeropage_y(CPU_6502* cpu){
-    uint16_t m_addr = get_zeropage_y_addr(cpu);
+void ldy_zeropage_x(CPU_6502* cpu) {
+    uint16_t m_addr = get_zeropage_x_addr(cpu);
     uint8_t m = cpu_read(cpu, m_addr);
     cpu->y = m;
     ldy_flags_do(cpu);
@@ -479,8 +479,11 @@ void pla_implied(CPU_6502* cpu){
     cpu->cycles += 4;
 }
                                                             /*PLP STUFF*/
-void plp_implied(CPU_6502* cpu){
-    cpu->p = (cpu_read(cpu, 0x0100 + cpu->sp+1)) | 0x20;
+void plp_implied(CPU_6502* cpu) {
+    uint8_t status = cpu_read(cpu, 0x0100 + cpu->sp + 1);
+
+    cpu->p = (status | 0x20) & ~0x10;
+
     cpu->sp++;
     cpu->cycles += 4;
 }
@@ -1615,96 +1618,96 @@ void ror_accumulator(CPU_6502* cpu){
     
     cpu->cycles += 2;
 }
-void ror_absolute(CPU_6502* cpu){
+void ror_absolute(CPU_6502* cpu) {
     uint16_t m_addr = get_absolute_addr(cpu);
     uint8_t m = cpu_read(cpu, m_addr);
-    
+
     // Сохраняем старый Carry
     uint8_t old_carry = (cpu->p & FLAG_CARRY) ? 1 : 0;
-    
-    // Старший бит A становится новым Carry
+
+    // Младший бит становится новым Carry
     uint8_t new_carry = (m & 0x01) ? 1 : 0;
-    
-    // Сдвигаем A влево и добавляем старый Carry в младший бит
+
+    // Вращаем вправо
     m = (m >> 1) | (old_carry << 7);
-    
+
+    // Записываем результат обратно в память
+    cpu_write(cpu, m_addr, m);
+
     // Устанавливаем новый Carry
-    if(new_carry) {
+    if (new_carry) {
         cpu->p |= FLAG_CARRY;
     } else {
         cpu->p &= ~FLAG_CARRY;
     }
+
     ror_flags_do(cpu, m);
-    
     cpu->cycles += 6;
 }
-void ror_absolute_x(CPU_6502* cpu){
+void ror_absolute_x(CPU_6502* cpu) {
     uint16_t m_addr = get_absolute_x_addr(cpu, NULL);
     uint8_t m = cpu_read(cpu, m_addr);
-    
-    // Сохраняем старый Carry
+
     uint8_t old_carry = (cpu->p & FLAG_CARRY) ? 1 : 0;
-    
-    // Старший бит A становится новым Carry
     uint8_t new_carry = (m & 0x01) ? 1 : 0;
-    
-    // Сдвигаем A влево и добавляем старый Carry в младший бит
+
     m = (m >> 1) | (old_carry << 7);
-    
-    // Устанавливаем новый Carry
-    if(new_carry) {
+
+    cpu_write(cpu, m_addr, m);
+
+    if (new_carry) {
         cpu->p |= FLAG_CARRY;
     } else {
         cpu->p &= ~FLAG_CARRY;
     }
+
     ror_flags_do(cpu, m);
-    
     cpu->cycles += 7;
 }
-void ror_zeropage(CPU_6502* cpu){
+void ror_zeropage(CPU_6502* cpu) {
     uint16_t m_addr = get_zeropage_addr(cpu);
     uint8_t m = cpu_read(cpu, m_addr);
-    
+
     // Сохраняем старый Carry
     uint8_t old_carry = (cpu->p & FLAG_CARRY) ? 1 : 0;
-    
-    // Старший бит A становится новым Carry
+
+    // Младший бит становится новым Carry
     uint8_t new_carry = (m & 0x01) ? 1 : 0;
-    
-    // Сдвигаем A влево и добавляем старый Carry в младший бит
+
+    // Вращаем вправо, добавляя старый Carry в старший бит
     m = (m >> 1) | (old_carry << 7);
-    
+
+    // Записываем результат обратно в память
+    cpu_write(cpu, m_addr, m);
+
     // Устанавливаем новый Carry
-    if(new_carry) {
+    if (new_carry) {
         cpu->p |= FLAG_CARRY;
     } else {
         cpu->p &= ~FLAG_CARRY;
     }
+
     ror_flags_do(cpu, m);
-    
     cpu->cycles += 5;
 }
-void ror_zeropage_x(CPU_6502* cpu){
+void ror_zeropage_x(CPU_6502* cpu) {
     uint16_t m_addr = get_zeropage_x_addr(cpu);
     uint8_t m = cpu_read(cpu, m_addr);
-    
-    // Сохраняем старый Carry
+
     uint8_t old_carry = (cpu->p & FLAG_CARRY) ? 1 : 0;
-    
-    // Старший бит A становится новым Carry
     uint8_t new_carry = (m & 0x01) ? 1 : 0;
-    
-    // Сдвигаем A влево и добавляем старый Carry в младший бит
+
     m = (m >> 1) | (old_carry << 7);
-    
-    // Устанавливаем новый Carry
-    if(new_carry) {
+
+    cpu_write(cpu, m_addr, m);
+
+    if (new_carry) {
         cpu->p |= FLAG_CARRY;
     } else {
         cpu->p &= ~FLAG_CARRY;
     }
+
     ror_flags_do(cpu, m);
-    
     cpu->cycles += 6;
 }
                                                             /*BRK STUFF*/
@@ -1767,36 +1770,36 @@ void jsr_absolute(CPU_6502* cpu){
     cpu->cycles += 6;
 }
                                                             /*RTI STUFF*/
-void rti_implied(CPU_6502* cpu){
-    // Извлекаем флаги из стека (увеличиваем SP до чтения)
+void rti_implied(CPU_6502* cpu) {
     cpu->sp++;
     uint8_t status = cpu_read(cpu, 0x0100 + cpu->sp);
-    
-    // Извлекаем PC (младший байт, потом старший)
+
     cpu->sp++;
     uint8_t lo = cpu_read(cpu, 0x0100 + cpu->sp);
+
     cpu->sp++;
     uint8_t hi = cpu_read(cpu, 0x0100 + cpu->sp);
-    
-    // Восстанавливаем флаги (бит 5 всегда должен быть 1)
-    cpu->p = status | 0x20;
-    
-    // Восстанавливаем PC (без прибавления 1, в отличие от RTS)
+
+    cpu->p = (status | 0x20) & ~0x10;
+
     cpu->pc = (hi << 8) | lo;
-    
     cpu->cycles += 6;
 }
                                                             /*RTS STUFF*/
+
 void rts_implied(CPU_6502* cpu){
     cpu->sp++;
     uint8_t pc_lo = cpu_read(cpu, 0x0100 + cpu->sp);
+
     cpu->sp++;
     uint8_t pc_hi = cpu_read(cpu, 0x0100 + cpu->sp);
-    cpu->sp++;
-    cpu->pc = ((pc_hi << 8) | pc_lo) + 1;
+
+    cpu->pc = ((uint16_t)pc_hi << 8) | pc_lo;
+    cpu->pc++;
 
     cpu->cycles += 6;
 }
+
                                                             /*BRANCH  STUFF*/
 void bcc_implied(CPU_6502* cpu){
     int8_t offset = (int8_t)cpu_read(cpu, cpu->pc++);
@@ -1989,9 +1992,9 @@ void opcodes_init(CPU_6502* cpu){
                 /*LDY OPCODES*/
     opcode_list[0xA0].execute = ldy_immediate;
     opcode_list[0xAC].execute = ldy_absolute;
-    opcode_list[0xBC].execute = ldy_absolute_y;
+    opcode_list[0xBC].execute = ldy_absolute_x;
     opcode_list[0xA4].execute = ldy_zeropage;
-    opcode_list[0xB4].execute = ldy_zeropage_y;
+    opcode_list[0xB4].execute = ldy_zeropage_x;
                 /*STA OPCODES*/
     opcode_list[0x8D].execute = sta_absolute;
     opcode_list[0x9D].execute = sta_absolute_x;

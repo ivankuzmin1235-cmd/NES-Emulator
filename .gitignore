@@ -67,3 +67,6 @@ dkms.conf
 
 # CPU tests
 /tests/
+
+# NES test logs
+/nestest.log
