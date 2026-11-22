@@ -1,0 +1,870 @@
+
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+<title>6502 CPU Debugger</title>
+
+<style>
+
+:root {
+    color-scheme: dark;
+
+    --bg: #10131a;
+    --panel: #191e29;
+    --panel2: #202736;
+    --border: #30394a;
+
+    --text: #e7edf7;
+    --muted: #8995a8;
+
+    --green: #65d69a;
+    --blue: #78aaff;
+    --orange: #f2b66d;
+    --red: #ff7777;
+}
+
+* {
+    box-sizing: border-box;
+}
+
+body {
+    margin: 0;
+    padding: 24px;
+
+    background: var(--bg);
+    color: var(--text);
+
+    font-family: system-ui, sans-serif;
+}
+
+main {
+    max-width: 1200px;
+    margin: auto;
+}
+
+header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 16px;
+    flex-wrap: wrap;
+
+    margin-bottom: 24px;
+}
+
+h1 {
+    margin: 0;
+    font-size: 25px;
+}
+
+h2 {
+    font-size: 15px;
+    margin: 0 0 16px;
+}
+
+.muted {
+    color: var(--muted);
+}
+
+.panel {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 18px;
+}
+
+.grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 12px;
+}
+
+.layout {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 16px;
+
+    margin-top: 16px;
+}
+
+.register {
+    background: var(--panel2);
+    padding: 14px;
+    border-radius: 8px;
+}
+
+.register small {
+    display: block;
+    color: var(--muted);
+    margin-bottom: 5px;
+}
+
+.register strong {
+    font-family: monospace;
+    font-size: 25px;
+}
+
+.register.changed strong {
+    color: var(--green);
+}
+
+.instruction {
+    font: bold 30px monospace;
+    color: var(--orange);
+}
+
+.bytes {
+    font: 18px monospace;
+    color: var(--blue);
+    margin-top: 8px;
+}
+
+.controls {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-top: 16px;
+    align-items: center;
+}
+
+button,
+select,
+input[type=file] {
+    background: var(--panel2);
+    border: 1px solid var(--border);
+    color: var(--text);
+
+    padding: 10px 14px;
+    border-radius: 7px;
+}
+
+button {
+    cursor: pointer;
+}
+
+button:hover {
+    border-color: var(--green);
+}
+
+button.primary {
+    background: #245b43;
+    border-color: #367b5c;
+}
+
+button:disabled {
+    opacity: 0.45;
+    cursor: not-allowed;
+}
+
+input[type=range] {
+    width: 100%;
+    accent-color: var(--green);
+}
+
+.progress {
+    height: 7px;
+    background: var(--panel2);
+    border-radius: 10px;
+    overflow: hidden;
+    margin: 12px 0;
+}
+
+.progress div {
+    height: 100%;
+    width: 0;
+    background: var(--green);
+}
+
+.statline {
+    display: flex;
+    justify-content: space-between;
+    gap: 10px;
+    flex-wrap: wrap;
+}
+
+.flags {
+    display: flex;
+    gap: 7px;
+    flex-wrap: wrap;
+}
+
+.flag {
+    flex: 1;
+    min-width: 40px;
+
+    text-align: center;
+    padding: 10px 4px;
+
+    border-radius: 7px;
+    background: var(--panel2);
+    color: var(--muted);
+}
+
+.flag.active {
+    color: var(--green);
+    background: #193a30;
+}
+
+.history {
+    max-height: 320px;
+    overflow: auto;
+    font: 13px monospace;
+}
+
+.history-row {
+    padding: 8px;
+    border-bottom: 1px solid var(--border);
+    cursor: pointer;
+}
+
+.history-row:hover {
+    background: var(--panel2);
+}
+
+.history-row.selected {
+    background: var(--panel2);
+    color: var(--green);
+}
+
+.status {
+    margin-top: 10px;
+    font-size: 13px;
+    color: var(--muted);
+}
+
+.status.error {
+    color: var(--red);
+}
+
+@media(max-width: 700px) {
+    body {
+        padding: 12px;
+    }
+
+    .layout {
+        grid-template-columns: 1fr;
+    }
+}
+
+</style>
+</head>
+
+
+<body>
+
+<main>
+
+<header>
+
+    <div>
+        <h1>6502 CPU Debugger</h1>
+
+        <div class="muted">
+            NES Emulator · nestest trace viewer
+        </div>
+    </div>
+
+    <label>
+        <input type="file" id="fileInput" accept=".json">
+    </label>
+
+</header>
+
+<section class="panel">
+
+    <div class="statline">
+
+        <strong id="stepLabel">
+            Trace not loaded
+        </strong>
+
+        <span class="muted" id="cycleLabel">
+            Cycles: —
+        </span>
+
+    </div>
+
+    <div class="progress">
+        <div id="progressBar"></div>
+    </div>
+
+    <input
+        id="timeline"
+        type="range"
+        min="0"
+        max="0"
+        value="0"
+        disabled
+    >
+
+    <div class="controls">
+
+        <button id="first" disabled>|◀</button>
+
+        <button id="back" disabled>
+            ◀ Step
+        </button>
+
+        <button class="primary" id="play" disabled>
+            ▶ Start
+        </button>
+
+        <button id="next" disabled>
+            Step ▶
+        </button>
+
+        <button id="last" disabled>
+            ▶|
+        </button>
+
+        <select id="speed" disabled>
+            <option value="1">1 step/s</option>
+            <option value="10">10 step/s</option>
+            <option value="30" selected>30 step/s</option>
+            <option value="60">60 step/s</option>
+            <option value="200">200 step/s</option>
+        </select>
+
+    </div>
+
+    <div id="status" class="status">
+        Select trace.json or start a local server.
+    </div>
+
+</section>
+
+
+<div class="layout">
+
+<section class="panel">
+
+    <h2>Current opcode</h2>
+
+    <div class="instruction" id="instruction">
+        —
+    </div>
+
+    <div class="muted" style="margin-top:12px">
+        Memory bytes from the current PC:
+    </div>
+
+    <div class="bytes" id="bytes">
+        —
+    </div>
+
+    <p class="muted" id="address">
+        PC: —
+    </p>
+
+
+    <h2 style="margin-top:24px">
+        Registers after execution
+    </h2>
+
+    <div class="grid" id="registers"></div>
+
+</section>
+
+<section class="panel">
+
+    <h2>
+        Processor flags after execution
+    </h2>
+
+    <div class="flags" id="flags"></div>
+
+
+    <h2 style="margin-top:28px">
+        Register changes
+    </h2>
+
+    <div id="changes" class="muted">
+        —
+    </div>
+
+
+    <h2 style="margin-top:28px">
+        State of the registers before the instruction
+    </h2>
+
+    <div class="grid" id="beforeRegisters"></div>
+
+</section>
+
+</div>
+
+<section class="panel" style="margin-top:16px">
+
+    <h2>
+        Execution history
+    </h2>
+
+    <div class="history" id="history">
+        Load trace.json
+    </div>
+
+</section>
+
+</main>
+
+
+<script>
+
+let trace = [];
+let current = 0;
+let timer = null;
+
+const $ = id => document.getElementById(id);
+
+
+const registerNames = [
+    ["a", "A"],
+    ["x", "X"],
+    ["y", "Y"],
+    ["pc", "PC"],
+    ["sp", "SP"],
+    ["p", "P"]
+];
+
+
+const flagNames = [
+    ["N", 0x80],
+    ["V", 0x40],
+    ["-", 0x20],
+    ["B", 0x10],
+    ["D", 0x08],
+    ["I", 0x04],
+    ["Z", 0x02],
+    ["C", 0x01]
+];
+
+
+function hex(value, width = 2) {
+    return "$" +
+        value.toString(16).toUpperCase().padStart(width, "0");
+}
+
+
+function setStatus(message, error = false) {
+    $("status").textContent = message;
+
+    $("status").classList.toggle("error", error);
+}
+
+
+function setControlsEnabled(enabled) {
+    [
+        "timeline",
+        "first",
+        "back",
+        "play",
+        "next",
+        "last",
+        "speed"
+    ].forEach(id => {
+        $(id).disabled = !enabled;
+    });
+}
+
+function stop() {
+    if (timer !== null) {
+        clearInterval(timer);
+        timer = null;
+    }
+
+    $("play").textContent = "▶ Start";
+}
+
+
+function next() {
+    if (!trace.length) return;
+
+    if (current < trace.length - 1) {
+        showStep(current + 1);
+    } else {
+        stop();
+    }
+}
+
+
+function play() {
+    if (!trace.length) return;
+
+    if (timer !== null) {
+        stop();
+        return;
+    }
+
+    if (current === trace.length - 1) {
+        showStep(0);
+    }
+
+    const speed = Number($("speed").value);
+    const interval = 1000 / speed;
+
+    $("play").textContent = "Ⅱ Pause";
+
+    timer = setInterval(next, interval);
+}
+
+function renderRegisters(container, state, previous = null) {
+    container.innerHTML = "";
+
+    registerNames.forEach(([key, label]) => {
+
+        const changed =
+            previous !== null &&
+            state[key] !== previous[key];
+
+        const width = key === "pc" ? 4 : 2;
+
+        const item = document.createElement("div");
+
+        item.className =
+            "register" + (changed ? " changed" : "");
+
+        const small = document.createElement("small");
+        small.textContent = label;
+
+        const strong = document.createElement("strong");
+        strong.textContent = hex(state[key], width);
+
+        item.append(small, strong);
+
+        container.appendChild(item);
+    });
+}
+
+function renderFlags(value) {
+    $("flags").innerHTML = "";
+
+    flagNames.forEach(([name, mask]) => {
+
+        const active = (value & mask) !== 0;
+
+        const item = document.createElement("div");
+
+        item.className =
+            "flag" + (active ? " active" : "");
+
+        const label = document.createElement("strong");
+        label.textContent = name;
+
+        const bit = document.createElement("div");
+        bit.textContent = active ? "1" : "0";
+
+        item.append(label, bit);
+
+        $("flags").appendChild(item);
+    });
+}
+
+function renderChanges(before, after) {
+    const changes = [];
+
+    registerNames.forEach(([key, label]) => {
+
+        if (before[key] !== after[key]) {
+
+            const width = key === "pc" ? 4 : 2;
+
+            changes.push(
+                `${label}: ${hex(before[key], width)} → ` +
+                `${hex(after[key], width)}`
+            );
+        }
+    });
+
+    if (before.cycles !== after.cycles) {
+        changes.push(
+            `Cycles: ${before.cycles} → ${after.cycles}`
+        );
+    }
+
+    $("changes").textContent = changes.length
+        ? changes.join("   |   ")
+        : "The registers have not changed.";
+}
+
+function renderHistory() {
+    const start = Math.max(0, current - 5);
+    const end = Math.min(trace.length, current + 6);
+
+    $("history").innerHTML = "";
+
+    for (let i = start; i < end; i++) {
+
+        const row = trace[i];
+
+        const item = document.createElement("div");
+
+        item.className =
+            "history-row" +
+            (i === current ? " selected" : "");
+
+        item.textContent =
+            `#${i.toString().padStart(4, "0")}  ` +
+            `${hex(row.pc, 4)}  ` +
+            row.bytes.map(b => hex(b)).join(" ");
+
+        item.addEventListener("click", () => {
+            stop();
+            showStep(i);
+        });
+
+        $("history").appendChild(item);
+    }
+}
+
+function showStep(index) {
+    if (!trace.length) return;
+
+    current = Math.max(
+        0,
+        Math.min(index, trace.length - 1)
+    );
+
+    const row = trace[current];
+
+    $("stepLabel").textContent =
+        `Instruction ${current + 1} из ${trace.length}`;
+
+    $("cycleLabel").textContent =
+        `Cycles: ${row.before.cycles} → ${row.after.cycles}`;
+
+    $("progressBar").style.width =
+        ((current + 1) / trace.length * 100) + "%";
+
+    $("timeline").value = current;
+
+    $("instruction").textContent =
+        `OPCODE ${hex(row.bytes[0])}`;
+
+    $("bytes").textContent =
+        row.bytes.map(b => hex(b)).join("   ");
+
+    $("address").textContent =
+        `Address: ${hex(row.pc, 4)}`;
+
+    renderRegisters(
+        $("registers"),
+        row.after,
+        row.before
+    );
+
+    renderRegisters(
+        $("beforeRegisters"),
+        row.before
+    );
+
+    renderFlags(row.after.p);
+
+    renderChanges(
+        row.before,
+        row.after
+    );
+
+    renderHistory();
+}
+
+function validateTrace(data) {
+
+    if (!Array.isArray(data) || data.length === 0) {
+        throw new Error(
+            "The trace is empty or has an invalid format"
+        );
+    }
+
+    for (const row of data) {
+
+        if (
+            !row ||
+            !Number.isSafeInteger(row.step) ||
+            !Number.isInteger(row.pc) ||
+            row.pc < 0 ||
+            row.pc > 0xFFFF ||
+            !Array.isArray(row.bytes) ||
+            row.bytes.length !== 3 ||
+            !row.before ||
+            !row.after
+        ) {
+            throw new Error(
+                "Incorrect trace record"
+            );
+        }
+
+        for (const byte of row.bytes) {
+            if (
+                !Number.isInteger(byte) ||
+                byte < 0 ||
+                byte > 0xFF
+            ) {
+                throw new Error(
+                    "Invalid instruction byte"
+                );
+            }
+        }
+
+        for (const state of [row.before, row.after]) {
+
+            for (const key of [
+                "a", "x", "y", "p", "sp", "pc", "cycles"
+            ]) {
+                if (!Number.isSafeInteger(state[key])) {
+                    throw new Error(
+                        "Invalid CPU state"
+                    );
+                }
+            }
+
+            for (const key of ["a", "x", "y", "p", "sp"]) {
+                if (state[key] < 0 || state[key] > 0xFF) {
+                    throw new Error(
+                        "Register value out of range"
+                    );
+                }
+            }
+
+            if (state.pc < 0 || state.pc > 0xFFFF) {
+                throw new Error(
+                    "Incorrect PC"
+                );
+            }
+
+            if (state.cycles < 0) {
+                throw new Error(
+                    "Incorrect number of cycles"
+                );
+            }
+        }
+
+        if (row.step < 0) {
+            throw new Error(
+                "Invalid step number"
+            );
+        }
+
+        if (row.before.pc !== row.pc) {
+            throw new Error(
+                "The instruction address does not match the PC."
+            );
+        }
+    }
+}
+
+function loadTrace(data) {
+
+    validateTrace(data);
+
+    stop();
+
+    trace = data;
+    current = 0;
+
+    $("timeline").max = trace.length - 1;
+
+    setControlsEnabled(true);
+
+    showStep(0);
+
+    setStatus(
+        `Successfully loaded ${trace.length} instructions.`
+    );
+}
+
+$("first").onclick = () => {
+    stop();
+    showStep(0);
+};
+
+
+$("back").onclick = () => {
+    stop();
+    showStep(current - 1);
+};
+
+
+$("next").onclick = () => {
+    stop();
+    next();
+};
+
+
+$("last").onclick = () => {
+    stop();
+    showStep(trace.length - 1);
+};
+
+
+$("play").onclick = play;
+
+
+$("timeline").oninput = event => {
+    stop();
+    showStep(Number(event.target.value));
+};
+
+
+$("speed").onchange = () => {
+
+    if (timer !== null) {
+        stop();
+        play();
+    }
+};
+
+$("fileInput").onchange = async event => {
+
+    const file = event.target.files[0];
+
+    if (!file) return;
+
+    try {
+
+        const data = JSON.parse(await file.text());
+
+        loadTrace(data);
+
+    } catch (error) {
+
+        stop();
+
+        setStatus(
+            "Download error: " + error.message,
+            true
+        );
+
+    }
+};
+
+fetch("trace.json")
+
+    .then(response => {
+
+        if (!response.ok) {
+            throw new Error("Trace not found");
+        }
+
+        return response.json();
+
+    })
+
+    .then(loadTrace)
+
+    .catch(() => {
+
+        setStatus(
+            "Automatic download failed. " +
+            "Choose trace.json."
+        );
+
+    });
+
+</script>
+
+</body>
+</html>
