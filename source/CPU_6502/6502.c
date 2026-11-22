@@ -65,20 +65,20 @@ uint16_t get_indirect_x_addr(CPU_6502* cpu){
 
     return m_addr;
 }
-uint16_t get_indirect_y_addr(CPU_6502* cpu, uint8_t* extra_cycle){
+uint16_t get_indirect_y_addr(CPU_6502* cpu, uint8_t* extra) {
     uint8_t zp_addr = cpu_read(cpu, cpu->pc++);
-    
-    
-    uint16_t m_addr_lo = cpu_read(cpu, zp_addr);
-    uint16_t m_addr_hi = cpu_read(cpu, (zp_addr + 1) & 0xFF);
-    uint16_t m_base_addr = (m_addr_hi << 8) | m_addr_lo;
-    uint16_t m_addr = m_base_addr + cpu->y;
 
-    if(extra_cycle != NULL){
-        *extra_cycle = ((m_base_addr & 0xFF00) != (m_addr & 0xFF00)) ? 1 : 0;/*Проверка перехода*/
+    uint8_t low = cpu_read(cpu, zp_addr);
+    uint8_t high = cpu_read(cpu, (uint8_t)(zp_addr + 1));
+
+    uint16_t base_addr = (uint16_t)(low | (high << 8));
+    uint16_t final_addr = base_addr + cpu->y;
+
+    if (extra != NULL) {
+        *extra = ((base_addr & 0xFF00) != (final_addr & 0xFF00));
     }
 
-    return m_addr;
+    return final_addr;
 }
                                                             /*LDA STUFF */
 void lda_flags_do(CPU_6502* cpu){
@@ -1966,10 +1966,570 @@ void nop_implied(CPU_6502* cpu){
     cpu->cycles += 2;
     return;
 }
+void nop_immediate(CPU_6502* cpu) {
+    cpu_read(cpu, cpu->pc++);
+    cpu->cycles += 2;
+}
+void nop_zeropage(CPU_6502* cpu) {
+    uint16_t m_addr = get_zeropage_addr(cpu);
 
+    cpu_read(cpu, m_addr);
 
+    cpu->cycles += 3;
+}
+void nop_zeropage_x(CPU_6502* cpu) {
+    uint16_t m_addr = get_zeropage_x_addr(cpu);
 
+    cpu_read(cpu, m_addr);
 
+    cpu->cycles += 4;
+}
+void nop_absolute(CPU_6502* cpu) {
+    uint16_t m_addr = get_absolute_addr(cpu);
+
+    cpu_read(cpu, m_addr);
+
+    cpu->cycles += 4;
+}
+void nop_absolute_x(CPU_6502* cpu) {
+    uint8_t extra;
+    uint16_t m_addr = get_absolute_x_addr(cpu, &extra);
+
+    cpu_read(cpu, m_addr);
+
+    cpu->cycles += 4 + extra;
+}
+
+                                                            /*LAX STUFF*/
+static void lax_load(CPU_6502* cpu, uint16_t m_addr) {
+    uint8_t m = cpu_read(cpu, m_addr);
+
+    cpu->a = m;
+    cpu->x = m;
+
+    cpu->p &= ~(FLAG_ZERO | FLAG_NEGATIVE);
+
+    if (m == 0) {
+        cpu->p |= FLAG_ZERO;
+    }
+
+    if (m & 0x80) {
+        cpu->p |= FLAG_NEGATIVE;
+    }
+}
+void lax_indirect_x(CPU_6502* cpu) {
+    uint16_t m_addr = get_indirect_x_addr(cpu);
+
+    lax_load(cpu, m_addr);
+
+    cpu->cycles += 6;
+}
+void lax_zeropage(CPU_6502* cpu) {
+    uint16_t m_addr = get_zeropage_addr(cpu);
+
+    lax_load(cpu, m_addr);
+
+    cpu->cycles += 3;
+}
+void lax_absolute(CPU_6502* cpu) {
+    uint16_t m_addr = get_absolute_addr(cpu);
+
+    lax_load(cpu, m_addr);
+
+    cpu->cycles += 4;
+}
+void lax_indirect_y(CPU_6502* cpu) {
+    uint8_t extra;
+    uint16_t m_addr = get_indirect_y_addr(cpu, &extra);
+
+    lax_load(cpu, m_addr);
+
+    cpu->cycles += 5 + extra;
+}
+void lax_zeropage_y(CPU_6502* cpu) {
+    uint16_t m_addr = get_zeropage_y_addr(cpu);
+
+    lax_load(cpu, m_addr);
+
+    cpu->cycles += 4;
+}
+void lax_absolute_y(CPU_6502* cpu) {
+    uint8_t extra;
+    uint16_t m_addr = get_absolute_y_addr(cpu, &extra);
+
+    lax_load(cpu, m_addr);
+
+    cpu->cycles += 4 + extra;
+}
+
+                                                            /*SAX STUFF*/
+void sax_indirect_x(CPU_6502* cpu) {
+    uint16_t m_addr = get_indirect_x_addr(cpu);
+
+    uint8_t m = cpu->a & cpu->x;
+
+    cpu_write(cpu, m_addr, m);
+
+    cpu->cycles += 6;
+}
+void sax_zeropage(CPU_6502* cpu) {
+    uint16_t m_addr = get_zeropage_addr(cpu);
+
+    cpu_write(cpu, m_addr, cpu->a & cpu->x);
+
+    cpu->cycles += 3;
+}
+void sax_absolute(CPU_6502* cpu) {
+    uint16_t m_addr = get_absolute_addr(cpu);
+
+    cpu_write(cpu, m_addr, cpu->a & cpu->x);
+
+    cpu->cycles += 4;
+}
+void sax_zeropage_y(CPU_6502* cpu) {
+    uint16_t m_addr = get_zeropage_y_addr(cpu);
+
+    cpu_write(cpu, m_addr, cpu->a & cpu->x);
+
+    cpu->cycles += 4;
+}
+
+                                                            /*DCP STUFF*/
+static void dcp_apply(CPU_6502* cpu, uint16_t m_addr) {
+    uint8_t m = cpu_read(cpu, m_addr);
+
+    // DEC: уменьшаем значение в памяти
+    m--;
+
+    cpu_write(cpu, m_addr, m);
+
+    // CMP: сравниваем аккумулятор с новым значением
+    uint8_t result = cpu->a - m;
+
+    cpu->p &= ~(FLAG_CARRY | FLAG_ZERO | FLAG_NEGATIVE);
+
+    if (cpu->a >= m) {
+        cpu->p |= FLAG_CARRY;
+    }
+
+    if (result == 0) {
+        cpu->p |= FLAG_ZERO;
+    }
+
+    if (result & 0x80) {
+        cpu->p |= FLAG_NEGATIVE;
+    }
+}
+void dcp_indirect_x(CPU_6502* cpu) {
+    uint16_t m_addr = get_indirect_x_addr(cpu);
+
+    dcp_apply(cpu, m_addr);
+
+    cpu->cycles += 8;
+}
+void dcp_zeropage(CPU_6502* cpu) {
+    uint16_t m_addr = get_zeropage_addr(cpu);
+
+    dcp_apply(cpu, m_addr);
+
+    cpu->cycles += 5;
+}
+void dcp_absolute(CPU_6502* cpu) {
+    uint16_t m_addr = get_absolute_addr(cpu);
+
+    dcp_apply(cpu, m_addr);
+
+    cpu->cycles += 6;
+}
+void dcp_indirect_y(CPU_6502* cpu) {
+    uint16_t m_addr = get_indirect_y_addr(cpu, NULL);
+
+    dcp_apply(cpu, m_addr);
+
+    cpu->cycles += 8;
+}
+void dcp_zeropage_x(CPU_6502* cpu) {
+    uint16_t m_addr = get_zeropage_x_addr(cpu);
+
+    dcp_apply(cpu, m_addr);
+
+    cpu->cycles += 6;
+}
+void dcp_absolute_y(CPU_6502* cpu) {
+    uint16_t m_addr = get_absolute_y_addr(cpu, NULL);
+
+    dcp_apply(cpu, m_addr);
+
+    cpu->cycles += 7;
+}
+void dcp_absolute_x(CPU_6502* cpu) {
+    uint16_t m_addr = get_absolute_x_addr(cpu, NULL);
+
+    dcp_apply(cpu, m_addr);
+
+    cpu->cycles += 7;
+}
+
+                                                            /*ISB STUFF*/
+static void isb_apply(CPU_6502* cpu, uint16_t m_addr) {
+    uint8_t m = cpu_read(cpu, m_addr);
+
+    // INC: увеличиваем значение в памяти
+    m++;
+
+    cpu_write(cpu, m_addr, m);
+
+    // SBC: вычитаем новое значение из аккумулятора
+    uint8_t a = cpu->a;
+    uint8_t carry = (cpu->p & FLAG_CARRY) ? 1 : 0;
+
+    uint16_t sum = (uint16_t)a + (uint8_t)(~m) + carry;
+    uint8_t result = (uint8_t)sum;
+
+    cpu->p &= ~(FLAG_CARRY | FLAG_ZERO |
+                FLAG_NEGATIVE | FLAG_OVERFLOW);
+
+    if (sum & 0x100) {
+        cpu->p |= FLAG_CARRY;
+    }
+
+    if (result == 0) {
+        cpu->p |= FLAG_ZERO;
+    }
+
+    if (result & 0x80) {
+        cpu->p |= FLAG_NEGATIVE;
+    }
+
+    if (((a ^ result) & (a ^ m) & 0x80) != 0) {
+        cpu->p |= FLAG_OVERFLOW;
+    }
+
+    cpu->a = result;
+}
+void isb_indirect_x(CPU_6502* cpu) {
+    uint16_t m_addr = get_indirect_x_addr(cpu);
+
+    isb_apply(cpu, m_addr);
+
+    cpu->cycles += 8;
+}
+void isb_zeropage(CPU_6502* cpu) {
+    uint16_t m_addr = get_zeropage_addr(cpu);
+
+    isb_apply(cpu, m_addr);
+
+    cpu->cycles += 5;
+}
+void isb_absolute(CPU_6502* cpu) {
+    uint16_t m_addr = get_absolute_addr(cpu);
+
+    isb_apply(cpu, m_addr);
+
+    cpu->cycles += 6;
+}
+void isb_indirect_y(CPU_6502* cpu) {
+    uint16_t m_addr = get_indirect_y_addr(cpu, NULL);
+
+    isb_apply(cpu, m_addr);
+
+    cpu->cycles += 8;
+}
+void isb_zeropage_x(CPU_6502* cpu) {
+    uint16_t m_addr = get_zeropage_x_addr(cpu);
+
+    isb_apply(cpu, m_addr);
+
+    cpu->cycles += 6;
+}
+void isb_absolute_y(CPU_6502* cpu) {
+    uint16_t m_addr = get_absolute_y_addr(cpu, NULL);
+
+    isb_apply(cpu, m_addr);
+
+    cpu->cycles += 7;
+}
+void isb_absolute_x(CPU_6502* cpu) {
+    uint16_t m_addr = get_absolute_x_addr(cpu, NULL);
+
+    isb_apply(cpu, m_addr);
+
+    cpu->cycles += 7;
+}
+                                                            /*SLO STUFF*/
+static void slo_apply(CPU_6502* cpu, uint16_t m_addr) {
+    uint8_t m = cpu_read(cpu, m_addr);
+
+    // ASL
+    cpu->p &= ~FLAG_CARRY;
+
+    if (m & 0x80) {
+        cpu->p |= FLAG_CARRY;
+    }
+
+    m <<= 1;
+
+    cpu_write(cpu, m_addr, m);
+
+    // ORA
+    cpu->a |= m;
+
+    cpu->p &= ~(FLAG_ZERO | FLAG_NEGATIVE);
+
+    if (cpu->a == 0) {
+        cpu->p |= FLAG_ZERO;
+    }
+
+    if (cpu->a & 0x80) {
+        cpu->p |= FLAG_NEGATIVE;
+    }
+}
+void slo_indirect_x(CPU_6502* cpu) {
+    uint16_t m_addr = get_indirect_x_addr(cpu);
+    slo_apply(cpu, m_addr);
+    cpu->cycles += 8;
+}
+void slo_zeropage(CPU_6502* cpu) {
+    uint16_t m_addr = get_zeropage_addr(cpu);
+    slo_apply(cpu, m_addr);
+    cpu->cycles += 5;
+}
+void slo_absolute(CPU_6502* cpu) {
+    uint16_t m_addr = get_absolute_addr(cpu);
+    slo_apply(cpu, m_addr);
+    cpu->cycles += 6;
+}
+void slo_indirect_y(CPU_6502* cpu) {
+    uint16_t m_addr = get_indirect_y_addr(cpu, NULL);
+    slo_apply(cpu, m_addr);
+    cpu->cycles += 8;
+}
+void slo_zeropage_x(CPU_6502* cpu) {
+    uint16_t m_addr = get_zeropage_x_addr(cpu);
+    slo_apply(cpu, m_addr);
+    cpu->cycles += 6;
+}
+void slo_absolute_y(CPU_6502* cpu) {
+    uint16_t m_addr = get_absolute_y_addr(cpu, NULL);
+    slo_apply(cpu, m_addr);
+    cpu->cycles += 7;
+}
+void slo_absolute_x(CPU_6502* cpu) {
+    uint16_t m_addr = get_absolute_x_addr(cpu, NULL);
+    slo_apply(cpu, m_addr);
+    cpu->cycles += 7;
+}
+
+                                                            /*RLA STUFF*/
+static void rla_apply(CPU_6502* cpu, uint16_t m_addr) {
+    uint8_t m = cpu_read(cpu, m_addr);
+
+    // ROL
+    uint8_t old_carry = (cpu->p & FLAG_CARRY) ? 1 : 0;
+
+    cpu->p &= ~FLAG_CARRY;
+
+    if (m & 0x80) {
+        cpu->p |= FLAG_CARRY;
+    }
+
+    m = (m << 1) | old_carry;
+
+    cpu_write(cpu, m_addr, m);
+
+    // AND
+    cpu->a &= m;
+
+    cpu->p &= ~(FLAG_ZERO | FLAG_NEGATIVE);
+
+    if (cpu->a == 0) {
+        cpu->p |= FLAG_ZERO;
+    }
+
+    if (cpu->a & 0x80) {
+        cpu->p |= FLAG_NEGATIVE;
+    }
+}
+void rla_indirect_x(CPU_6502* cpu) {
+    uint16_t m_addr = get_indirect_x_addr(cpu);
+    rla_apply(cpu, m_addr);
+    cpu->cycles += 8;
+}
+void rla_zeropage(CPU_6502* cpu) {
+    uint16_t m_addr = get_zeropage_addr(cpu);
+    rla_apply(cpu, m_addr);
+    cpu->cycles += 5;
+}
+void rla_absolute(CPU_6502* cpu) {
+    uint16_t m_addr = get_absolute_addr(cpu);
+    rla_apply(cpu, m_addr);
+    cpu->cycles += 6;
+}
+void rla_indirect_y(CPU_6502* cpu) {
+    uint16_t m_addr = get_indirect_y_addr(cpu, NULL);
+    rla_apply(cpu, m_addr);
+    cpu->cycles += 8;
+}
+void rla_zeropage_x(CPU_6502* cpu) {
+    uint16_t m_addr = get_zeropage_x_addr(cpu);
+    rla_apply(cpu, m_addr);
+    cpu->cycles += 6;
+}
+void rla_absolute_y(CPU_6502* cpu) {
+    uint16_t m_addr = get_absolute_y_addr(cpu, NULL);
+    rla_apply(cpu, m_addr);
+    cpu->cycles += 7;
+}
+void rla_absolute_x(CPU_6502* cpu) {
+    uint16_t m_addr = get_absolute_x_addr(cpu, NULL);
+    rla_apply(cpu, m_addr);
+    cpu->cycles += 7;
+}
+
+                                                            /*SRE STUFF*/
+static void sre_apply(CPU_6502* cpu, uint16_t m_addr) {
+    uint8_t m = cpu_read(cpu, m_addr);
+
+    // LSR
+    cpu->p &= ~FLAG_CARRY;
+
+    if (m & 0x01) {
+        cpu->p |= FLAG_CARRY;
+    }
+
+    m >>= 1;
+
+    cpu_write(cpu, m_addr, m);
+
+    // EOR
+    cpu->a ^= m;
+
+    cpu->p &= ~(FLAG_ZERO | FLAG_NEGATIVE);
+
+    if (cpu->a == 0) {
+        cpu->p |= FLAG_ZERO;
+    }
+
+    if (cpu->a & 0x80) {
+        cpu->p |= FLAG_NEGATIVE;
+    }
+}
+void sre_indirect_x(CPU_6502* cpu) {
+    uint16_t m_addr = get_indirect_x_addr(cpu);
+    sre_apply(cpu, m_addr);
+    cpu->cycles += 8;
+}
+void sre_zeropage(CPU_6502* cpu) {
+    uint16_t m_addr = get_zeropage_addr(cpu);
+    sre_apply(cpu, m_addr);
+    cpu->cycles += 5;
+}
+void sre_absolute(CPU_6502* cpu) {
+    uint16_t m_addr = get_absolute_addr(cpu);
+    sre_apply(cpu, m_addr);
+    cpu->cycles += 6;
+}
+void sre_indirect_y(CPU_6502* cpu) {
+    uint16_t m_addr = get_indirect_y_addr(cpu, NULL);
+    sre_apply(cpu, m_addr);
+    cpu->cycles += 8;
+}
+void sre_zeropage_x(CPU_6502* cpu) {
+    uint16_t m_addr = get_zeropage_x_addr(cpu);
+    sre_apply(cpu, m_addr);
+    cpu->cycles += 6;
+}
+void sre_absolute_y(CPU_6502* cpu) {
+    uint16_t m_addr = get_absolute_y_addr(cpu, NULL);
+    sre_apply(cpu, m_addr);
+    cpu->cycles += 7;
+}
+void sre_absolute_x(CPU_6502* cpu) {
+    uint16_t m_addr = get_absolute_x_addr(cpu, NULL);
+    sre_apply(cpu, m_addr);
+    cpu->cycles += 7;
+}
+
+                                                            /*RRA STUFF*/
+static void rra_apply(CPU_6502* cpu, uint16_t m_addr) {
+    uint8_t m = cpu_read(cpu, m_addr);
+
+    // ROR
+    uint8_t old_carry = (cpu->p & FLAG_CARRY) ? 1 : 0;
+
+    cpu->p &= ~FLAG_CARRY;
+
+    if (m & 0x01) {
+        cpu->p |= FLAG_CARRY;
+    }
+
+    m = (m >> 1) | (old_carry << 7);
+
+    cpu_write(cpu, m_addr, m);
+
+    // ADC
+    uint8_t a = cpu->a;
+    uint8_t carry = (cpu->p & FLAG_CARRY) ? 1 : 0;
+
+    uint16_t sum = (uint16_t)a + m + carry;
+    uint8_t result = (uint8_t)sum;
+
+    cpu->p &= ~(FLAG_CARRY | FLAG_ZERO |
+                FLAG_NEGATIVE | FLAG_OVERFLOW);
+
+    if (sum > 0xFF) {
+        cpu->p |= FLAG_CARRY;
+    }
+
+    if (result == 0) {
+        cpu->p |= FLAG_ZERO;
+    }
+
+    if (result & 0x80) {
+        cpu->p |= FLAG_NEGATIVE;
+    }
+
+    if ((~(a ^ m) & (a ^ result) & 0x80) != 0) {
+        cpu->p |= FLAG_OVERFLOW;
+    }
+
+    cpu->a = result;
+}
+void rra_indirect_x(CPU_6502* cpu) {
+    uint16_t m_addr = get_indirect_x_addr(cpu);
+    rra_apply(cpu, m_addr);
+    cpu->cycles += 8;
+}
+void rra_zeropage(CPU_6502* cpu) {
+    uint16_t m_addr = get_zeropage_addr(cpu);
+    rra_apply(cpu, m_addr);
+    cpu->cycles += 5;
+}
+void rra_absolute(CPU_6502* cpu) {
+    uint16_t m_addr = get_absolute_addr(cpu);
+    rra_apply(cpu, m_addr);
+    cpu->cycles += 6;
+}
+void rra_indirect_y(CPU_6502* cpu) {
+    uint16_t m_addr = get_indirect_y_addr(cpu, NULL);
+    rra_apply(cpu, m_addr);
+    cpu->cycles += 8;
+}
+void rra_zeropage_x(CPU_6502* cpu) {
+    uint16_t m_addr = get_zeropage_x_addr(cpu);
+    rra_apply(cpu, m_addr);
+    cpu->cycles += 6;
+}
+void rra_absolute_y(CPU_6502* cpu) {
+    uint16_t m_addr = get_absolute_y_addr(cpu, NULL);
+    rra_apply(cpu, m_addr);
+    cpu->cycles += 7;
+}
+void rra_absolute_x(CPU_6502* cpu) {
+    uint16_t m_addr = get_absolute_x_addr(cpu, NULL);
+    rra_apply(cpu, m_addr);
+    cpu->cycles += 7;
+}
                                                             /*OPCODES STUFF*/
 Instruction opcode_list[0x100];
 
@@ -2105,6 +2665,7 @@ void opcodes_init(CPU_6502* cpu){
     opcode_list[0xCC].execute = cpy_absolute;
                 /*SBC OPCODES*/
     opcode_list[0xE9].execute = sbc_immediate;
+    opcode_list[0xEB].execute = sbc_immediate;
     opcode_list[0xE5].execute = sbc_zeropage;
     opcode_list[0xF5].execute = sbc_zeropage_x;
     opcode_list[0xED].execute = sbc_absolute;
@@ -2152,8 +2713,94 @@ void opcodes_init(CPU_6502* cpu){
     opcode_list[0x58].execute = cli_implied;
     opcode_list[0x78].execute = sei_implied;
     opcode_list[0xB8].execute = clv_implied;
-                /*NOP OPCODE*/
-    opcode_list[0xEA].execute = nop_implied;
+                /*NOP OPCODES*/
+    opcode_list[0x1A].execute = nop_implied;
+    opcode_list[0x3A].execute = nop_implied;
+    opcode_list[0x5A].execute = nop_implied;
+    opcode_list[0x7A].execute = nop_implied;
+    opcode_list[0xDA].execute = nop_implied;
+    opcode_list[0xFA].execute = nop_implied;
+    opcode_list[0x80].execute = nop_immediate;
+    opcode_list[0x82].execute = nop_immediate;
+    opcode_list[0x89].execute = nop_immediate;
+    opcode_list[0xC2].execute = nop_immediate;
+    opcode_list[0xE2].execute = nop_immediate;
+    opcode_list[0x04].execute = nop_zeropage;
+    opcode_list[0x44].execute = nop_zeropage;
+    opcode_list[0x64].execute = nop_zeropage;
+    opcode_list[0x14].execute = nop_zeropage_x;
+    opcode_list[0x34].execute = nop_zeropage_x;
+    opcode_list[0x54].execute = nop_zeropage_x;
+    opcode_list[0x74].execute = nop_zeropage_x;
+    opcode_list[0xD4].execute = nop_zeropage_x;
+    opcode_list[0xF4].execute = nop_zeropage_x;
+    opcode_list[0x0C].execute = nop_absolute;
+    opcode_list[0x1C].execute = nop_absolute_x;
+    opcode_list[0x3C].execute = nop_absolute_x;
+    opcode_list[0x5C].execute = nop_absolute_x;
+    opcode_list[0x7C].execute = nop_absolute_x;
+    opcode_list[0xDC].execute = nop_absolute_x;
+    opcode_list[0xFC].execute = nop_absolute_x;
+                /*LAX OPCODES*/
+    opcode_list[0xA3].execute = lax_indirect_x;
+    opcode_list[0xA7].execute = lax_zeropage;
+    opcode_list[0xAF].execute = lax_absolute;
+    opcode_list[0xB3].execute = lax_indirect_y;
+    opcode_list[0xB7].execute = lax_zeropage_y;
+    opcode_list[0xBF].execute = lax_absolute_y;
+                /*SAX OPCODES*/
+    opcode_list[0x83].execute = sax_indirect_x;
+    opcode_list[0x87].execute = sax_zeropage;
+    opcode_list[0x8F].execute = sax_absolute;
+    opcode_list[0x97].execute = sax_zeropage_y;
+                /*DCP OPCODES*/
+    opcode_list[0xC3].execute = dcp_indirect_x;
+    opcode_list[0xC7].execute = dcp_zeropage;
+    opcode_list[0xCF].execute = dcp_absolute;
+    opcode_list[0xD3].execute = dcp_indirect_y;
+    opcode_list[0xD7].execute = dcp_zeropage_x;
+    opcode_list[0xDB].execute = dcp_absolute_y;
+    opcode_list[0xDF].execute = dcp_absolute_x;
+    opcode_list[0xE3].execute = isb_indirect_x;
+                /*ISB OPCODES*/
+    opcode_list[0xE7].execute = isb_zeropage;
+    opcode_list[0xEF].execute = isb_absolute;
+    opcode_list[0xF3].execute = isb_indirect_y;
+    opcode_list[0xF7].execute = isb_zeropage_x;
+    opcode_list[0xFB].execute = isb_absolute_y;
+    opcode_list[0xFF].execute = isb_absolute_x;
+                /*SLO OPCODES*/
+    opcode_list[0x03].execute = slo_indirect_x;
+    opcode_list[0x07].execute = slo_zeropage;
+    opcode_list[0x0F].execute = slo_absolute;
+    opcode_list[0x13].execute = slo_indirect_y;
+    opcode_list[0x17].execute = slo_zeropage_x;
+    opcode_list[0x1B].execute = slo_absolute_y;
+    opcode_list[0x1F].execute = slo_absolute_x;
+                /*RLA OPCODES*/
+    opcode_list[0x23].execute = rla_indirect_x;
+    opcode_list[0x27].execute = rla_zeropage;
+    opcode_list[0x2F].execute = rla_absolute;
+    opcode_list[0x33].execute = rla_indirect_y;
+    opcode_list[0x37].execute = rla_zeropage_x;
+    opcode_list[0x3B].execute = rla_absolute_y;
+    opcode_list[0x3F].execute = rla_absolute_x;
+                /*SRE OPCODES*/
+    opcode_list[0x43].execute = sre_indirect_x;
+    opcode_list[0x47].execute = sre_zeropage;
+    opcode_list[0x4F].execute = sre_absolute;
+    opcode_list[0x53].execute = sre_indirect_y;
+    opcode_list[0x57].execute = sre_zeropage_x;
+    opcode_list[0x5B].execute = sre_absolute_y;
+    opcode_list[0x5F].execute = sre_absolute_x;
+                /*RRA OPCODES*/
+    opcode_list[0x63].execute = rra_indirect_x;
+    opcode_list[0x67].execute = rra_zeropage;
+    opcode_list[0x6F].execute = rra_absolute;
+    opcode_list[0x73].execute = rra_indirect_y;
+    opcode_list[0x77].execute = rra_zeropage_x;
+    opcode_list[0x7B].execute = rra_absolute_y;
+    opcode_list[0x7F].execute = rra_absolute_x;
 }
                                                             /*CPU STUFF*/
 void cpu_load_rom(CPU_6502* cpu, const char* filename){

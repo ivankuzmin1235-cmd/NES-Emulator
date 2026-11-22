@@ -1,6 +1,6 @@
 # NES Emulator
 
-<p aling ="center">
+<p align="center">
     <img src="docs/images/nes.jpg" alt="NES Emulator" width="840">
 </p>
 
@@ -12,9 +12,13 @@ implementing the MOS 6502 CPU and testing its instructions.
 The emulator is under development.
 
 Currently, the project contains:
-- A partial implementation of the 6502 CPU.
+- An implementation of the documented 6502 instructions used by the test ROM.
+- Major stable unofficial 6502 instruction families.
 - CPU instruction and addressing-mode code.
-- An initial test harness using a NES test ROM.
+- CPU status flags, stack operations and cycle counting.
+- A test harness using a NES test ROM.
+
+The CPU implementation successfully passes all 8991 instruction checks in `nestest`.
 
 The following components are not implemented yet:
 - PPU (graphics processing).
