@@ -4,7 +4,7 @@
     <img src="docs/images/nes.jpg" alt="NES Emulator" width="840">
 </p>
 
-An NES emulator written in C. The project is currently focused on implementing the MOS 6502 CPU and testing its instructions.
+An NES emulator written in C. The project is currently focused on implementing the MOS 6502 CPU and the NES memory system.
 
 ## Current status
 
@@ -17,6 +17,10 @@ Currently, the project contains:
 - CPU status flags, stack operations and cycle counting.
 - A test harness using a NES test ROM.
 - A browser-based CPU debugger for visualizing execution traces.
+- A basic NES memory bus.
+- 2 KB internal RAM with address mirroring.
+- PRG ROM mapping for 16 KB and 32 KB cartridges.
+- Basic iNES ROM loading with NROM (Mapper 0) support.
 
 The CPU implementation successfully passes all 8991 instruction checks in `nestest`.
 
@@ -24,8 +28,8 @@ The following components are not implemented yet:
 - PPU (graphics processing).
 - APU (audio processing).
 - Controllers.
-- Cartridge mappers.
-- A complete NES memory bus.
+- Additional cartridge mappers.
+- Complete NES memory and hardware integration.
 
 The emulator is not yet intended to run arbitrary NES games.
 
@@ -112,9 +116,14 @@ NES-Emulator/
 │       └── nes.jpg
 ├── source/
 │   ├── main.c
-│   └── CPU_6502/
-│       ├── 6502.c
-│       └── 6502.h
+│   ├── CPU_6502/
+│   │   ├── 6502.c
+│   │   └── 6502.h
+│   └── bus/
+│       ├── bus.c
+│       └── bus.h
+├── tests/
+│   └── test_bus.c
 ├── debugger.html
 ├── .gitignore
 ├── Makefile
