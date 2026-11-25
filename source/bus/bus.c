@@ -2,21 +2,32 @@
 
 #include <stdio.h>
 #include <string.h>
+#include "../PPU/ppu.h"
 
 void bus_init(Bus* bus) {
     memset(bus, 0, sizeof(Bus));
+
+    ppu_init(&bus->ppu);
 }
 
 uint8_t bus_read(Bus* bus, uint16_t address) {
 
+    // Internal RAM: $0000-$1FFF
     if (address <= 0x1FFF) {
         return bus->ram[address & 0x07FF];
     }
 
+    // PPU registers: $2000-$3FFF
+    if (address <= 0x3FFF) {
+        return ppu_cpu_read(&bus->ppu, address);
+    }
+
+    // APU and I/O: $4000-$7FFF
     if (address <= 0x7FFF) {
         return 0;
     }
 
+    // PRG ROM: $8000-$FFFF
     if (address >= 0x8000) {
         size_t offset = address - 0x8000;
 
@@ -32,11 +43,17 @@ uint8_t bus_read(Bus* bus, uint16_t address) {
 
 void bus_write(Bus* bus, uint16_t address, uint8_t value) {
 
+    // Internal RAM: $0000-$1FFF
     if (address <= 0x1FFF) {
         bus->ram[address & 0x07FF] = value;
         return;
     }
 
+    // PPU registers: $2000-$3FFF
+    if (address <= 0x3FFF) {
+        ppu_cpu_write(&bus->ppu, address, value);
+        return;
+    }
 }
 
 

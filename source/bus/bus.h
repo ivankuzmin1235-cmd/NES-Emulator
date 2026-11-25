@@ -3,6 +3,7 @@
 
 #include <stdint.h>
 #include <stddef.h>
+#include "../PPU/ppu.h"
 
 #define RAM_SIZE 2048
 #define PRG_ROM_MAX_SIZE 32768
@@ -12,6 +13,8 @@ typedef struct {
 
     uint8_t prg_rom[PRG_ROM_MAX_SIZE];
     size_t prg_rom_size;
+
+    PPU ppu;
 
 } Bus;
 

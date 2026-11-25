@@ -3,7 +3,8 @@ CFLAGS = -Wall -Wextra -std=c11 -Isource/CPU_6502
 
 SOURCES = $(wildcard source/*.c) \
           $(wildcard source/CPU_6502/*.c) \
-          $(wildcard source/bus/*.c)
+          $(wildcard source/bus/*.c) \
+		  $(wildcard source/PPU/*.c)
 OBJECTS = $(patsubst source/%.c,build/%.o,$(SOURCES))
 TARGET = build/nes-emulator
 
