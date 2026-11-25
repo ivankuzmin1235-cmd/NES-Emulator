@@ -53,4 +53,11 @@ void ppu_cpu_write(PPU* ppu, uint16_t address, uint8_t value);
 uint8_t ppu_read_memory(PPU* ppu, uint16_t address);
 void ppu_write_memory(PPU* ppu, uint16_t address, uint8_t value);
 
+uint8_t ppu_get_pattern_pixel(
+    PPU* ppu,
+    uint16_t tile_index,
+    uint8_t x,
+    uint8_t y
+);
+
 #endif

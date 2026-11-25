@@ -13,6 +13,36 @@ void ppu_init(PPU* ppu) {
     ppu->mirroring = MIRRORING_HORIZONTAL;
 }
 
+// Get the color index of one pixel in a pattern table tile.
+uint8_t ppu_get_pattern_pixel(
+    PPU* ppu,
+    uint16_t tile_index,
+    uint8_t x,
+    uint8_t y
+) {
+    // A tile is 8x8 pixels.
+    if (tile_index >= 512 || x >= 8 || y >= 8) {
+        return 0;
+    }
+
+    // Each tile occupies 16 bytes in CHR memory.
+    uint16_t tile_address = tile_index * 16;
+
+    // Read both bitplanes.
+    uint8_t low_plane = ppu->chr[tile_address + y];
+    uint8_t high_plane = ppu->chr[tile_address + y + 8];
+
+    // Pixels are stored from left to right,
+    // starting with the most significant bit.
+    uint8_t bit = 7 - x;
+
+    uint8_t low_bit = (low_plane >> bit) & 1;
+    uint8_t high_bit = (high_plane >> bit) & 1;
+
+    // Combine two bits into a color index (0-3).
+    return (high_bit << 1) | low_bit;
+}
+
 // Increment the VRAM address after PPUDATA access.
 static void ppu_increment_vram_address(PPU* ppu) {
     if (ppu->control & 0x04) {

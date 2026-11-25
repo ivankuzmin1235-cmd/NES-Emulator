@@ -57,6 +57,7 @@ void bus_write(Bus* bus, uint16_t address, uint8_t value) {
 }
 
 
+
 int bus_load_prg_rom(Bus* bus, const char* filename) {
     FILE* file = fopen(filename, "rb");
 
@@ -110,6 +111,15 @@ int bus_load_prg_rom(Bus* bus, const char* filename) {
         return 0;
     }
 
+    // Calculate CHR ROM size
+    uint8_t chr_banks = header[5];
+
+    if (chr_banks > 1) {
+        printf("ERROR: Unsupported CHR ROM size: %u banks\n", chr_banks);
+        fclose(file);
+        return 0;
+    }
+
     // Skip optional 512-byte Trainer
     if (header[6] & 0x04) {
         if (fseek(file, 512, SEEK_CUR) != 0) {
@@ -127,6 +137,39 @@ int bus_load_prg_rom(Bus* bus, const char* filename) {
     }
 
     bus->prg_rom_size = prg_size;
+
+    // Read CHR ROM or initialize CHR RAM
+    if (chr_banks > 0) {
+        if (fread(
+            bus->ppu.chr,
+            1,
+            PPU_CHR_SIZE,
+            file
+        ) != PPU_CHR_SIZE) {
+            printf("ERROR: Cannot read complete CHR ROM\n");
+            fclose(file);
+            return 0;
+        }
+
+        bus->ppu.chr_is_ram = 0;
+
+        printf("Loaded CHR ROM: %u bytes\n", PPU_CHR_SIZE);
+    } else {
+        memset(bus->ppu.chr, 0, PPU_CHR_SIZE);
+
+        bus->ppu.chr_is_ram = 1;
+
+        printf("Using CHR RAM: %u bytes\n", PPU_CHR_SIZE);
+    }
+
+    // Configure nametable mirroring
+    if (header[6] & 0x08) {
+        bus->ppu.mirroring = MIRRORING_FOUR_SCREEN;
+    } else if (header[6] & 0x01) {
+        bus->ppu.mirroring = MIRRORING_VERTICAL;
+    } else {
+        bus->ppu.mirroring = MIRRORING_HORIZONTAL;
+    }
 
     fclose(file);
 
