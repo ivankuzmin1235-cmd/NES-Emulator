@@ -2,6 +2,7 @@
 #define CPU_H
 
 #include <stdint.h>
+#include "../bus/bus.h"
 
 // Flags
 #define FLAG_CARRY     0x01
@@ -12,11 +13,13 @@
 #define FLAG_OVERFLOW  0x40
 #define FLAG_NEGATIVE  0x80
 
-// СPU Structure
+// CPU Structure
 typedef struct {
     uint8_t a, x, y, sp, p;
     uint16_t pc;
-    uint8_t ram[65536];
+
+    Bus bus;
+
     uint64_t cycles;
 } CPU_6502;
 

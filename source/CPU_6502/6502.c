@@ -2803,108 +2803,52 @@ void opcodes_init(CPU_6502* cpu){
     opcode_list[0x7F].execute = rra_absolute_x;
 }
                                                             /*CPU STUFF*/
-void cpu_load_rom(CPU_6502* cpu, const char* filename){
-    FILE* f = fopen(filename, "rb");
-    if (!f) {
-        printf("ERROR: Can't open file %s\n", filename);
-        return;
+void cpu_load_rom(CPU_6502* cpu, const char* filename) {
+    if (!bus_load_prg_rom(&cpu->bus, filename)) {
+        printf("ERROR: Failed to load PRG ROM\n");
     }
-    
-    uint8_t header[16];
-    size_t read = fread(header, 1, 16, f);
-    if (read != 16) {
-        printf("ERROR: Can't read header\n");
-        fclose(f);
-        return;
-    }
-    
-    // Проверка заголовка
-    if (header[0] != 'N' || header[1] != 'E' || header[2] != 'S' || header[3] != 0x1A) {
-        printf("ERROR: Invalid NES header\n");
-        fclose(f);
-        return;
-    }
-    
-    int prg_rom_size = header[4] * 16384;  // 16KB units
-    int chr_rom_size = header[5] * 8192;   // 8KB units
-    
-    printf("PRG ROM: %d bytes\n", prg_rom_size);
-    printf("CHR ROM: %d bytes\n", chr_rom_size);
-    
-    // Определяем адрес загрузки
-    uint16_t load_addr;
-    if (prg_rom_size == 16384) {
-        // 16KB: грузим в 0x8000 и зеркалим в 0xC000
-        load_addr = 0x8000;
-
-        size_t bytes_read = fread(cpu->ram + load_addr, 1, prg_rom_size, f);
-
-        if (bytes_read != (size_t)prg_rom_size) {
-            printf("ERROR: Incomplete PRG ROM read\n");
-            fclose(f);
-            return;
-        }
-        memcpy(cpu->ram + 0xC000, cpu->ram + 0x8000, 16384);
-        printf("Loaded 16KB ROM at 0x8000\n");
-    }
-    else if (prg_rom_size == 32768) {
-        // 32KB: грузим в 0x8000 (заполняет 0x8000-0xFFFF)
-        load_addr = 0x8000;
-        size_t bytes_read = fread(cpu->ram + load_addr, 1, prg_rom_size, f);
-        if (bytes_read != (size_t)prg_rom_size) {
-            printf("ERROR: Incomplete PRG ROM read\n");
-            fclose(f);
-            return;
-        }
-
-        printf("Loaded 32KB ROM at 0x8000-0xFFFF\n");
-    }
-    else {
-        printf("ERROR: Unsupported PRG ROM size: %d bytes\n", prg_rom_size);
-        fclose(f);
-        return;
-    }
-    
-    // CHR ROM пропускаем (пока не нужен для CPU тестов)
-    if (chr_rom_size > 0) {
-        fseek(f, chr_rom_size, SEEK_CUR);
-        printf("Skipped CHR ROM (%d bytes)\n", chr_rom_size);
-    }
-    
-    fclose(f);
 }
+
 void cpu_load_bin(CPU_6502* cpu, const char* filename, uint16_t addr) {
     FILE* f = fopen(filename, "rb");
+
     if (!f) {
         printf("ERROR: Can't open file %s\n", filename);
         return;
     }
-    
-    // Узнаём размер файла
+
+    // Get file size
     fseek(f, 0, SEEK_END);
     long size = ftell(f);
     fseek(f, 0, SEEK_SET);
-    
-    // Проверяем, что файл не вылезет за пределы памяти
-    if (size > 65536 - addr) {
-        printf("ERROR: File too big (%ld bytes), max %d bytes at 0x%04X\n", 
-               size, 65536 - addr, addr);
+
+    // Check memory boundaries
+    if (size < 0 || size > 65536L - addr) {
+        printf("ERROR: File too big (%ld bytes), max %ld bytes at 0x%04X\n",
+               size, 65536L - addr, addr);
         fclose(f);
         return;
     }
-    
-    // Читаем файл прямо в память по указанному адресу
-    size_t bytes_read = fread(cpu->ram + addr, 1, size, f);
+
+    // Read file byte by byte through the Bus
+    size_t bytes_read = 0;
+    int byte;
+
+    while (bytes_read < (size_t)size && (byte = fgetc(f)) != EOF) {
+        cpu_write(cpu, (uint16_t)(addr + bytes_read), (uint8_t)byte);
+        bytes_read++;
+    }
+
     printf("Loaded %zu bytes at 0x%04X\n", bytes_read, addr);
-    
+
     fclose(f);
 }
 
 uint8_t cpu_read(CPU_6502* cpu, uint16_t address){
-    return cpu->ram[address];
+    return bus_read(&cpu->bus, address);
 }
 void cpu_write(CPU_6502* cpu, uint16_t address, uint8_t value){
-    cpu->ram[address] = value;
+    bus_write(&cpu->bus, address, value);
 }
 
 uint16_t cpu_read_reset_vector(CPU_6502* cpu){
@@ -2917,7 +2861,7 @@ uint16_t cpu_read_reset_vector(CPU_6502* cpu){
 }
 
 void cpu_init(CPU_6502* cpu, const char* filename){
-    memset(&cpu->ram, 0, 65536);
+    bus_init(&cpu->bus);
     cpu_load_rom(cpu, filename);
       
     cpu->a = 0;
