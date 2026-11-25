@@ -3,7 +3,15 @@
 
 #include <stdint.h>
 
-#define PPU_VRAM_SIZE 0x4000
+#define PPU_CHR_SIZE 0x2000
+#define PPU_NAMETABLE_SIZE 0x1000
+#define PPU_PALETTE_SIZE 0x20
+
+typedef enum {
+    MIRRORING_HORIZONTAL,
+    MIRRORING_VERTICAL,
+    MIRRORING_FOUR_SCREEN
+} Mirroring;
 
 typedef struct PPU {
     // PPU registers
@@ -18,8 +26,6 @@ typedef struct PPU {
     // Scroll registers
     uint8_t scroll_x;
     uint8_t scroll_y;
-
-    // Shared write latch for PPUSCROLL and PPUADDR
     uint8_t scroll_latch;
 
     // VRAM address registers
@@ -28,8 +34,14 @@ typedef struct PPU {
     // PPUDATA read buffer
     uint8_t data_buffer;
 
-    // Temporary PPU memory
-    uint8_t vram[PPU_VRAM_SIZE];
+    // PPU memory
+    uint8_t chr[PPU_CHR_SIZE];
+    uint8_t nametable_ram[PPU_NAMETABLE_SIZE];
+    uint8_t palette_ram[PPU_PALETTE_SIZE];
+
+    // CHR and nametable configuration
+    uint8_t chr_is_ram;
+    Mirroring mirroring;
 
 } PPU;
 
@@ -37,5 +49,8 @@ void ppu_init(PPU* ppu);
 
 uint8_t ppu_cpu_read(PPU* ppu, uint16_t address);
 void ppu_cpu_write(PPU* ppu, uint16_t address, uint8_t value);
+
+uint8_t ppu_read_memory(PPU* ppu, uint16_t address);
+void ppu_write_memory(PPU* ppu, uint16_t address, uint8_t value);
 
 #endif
