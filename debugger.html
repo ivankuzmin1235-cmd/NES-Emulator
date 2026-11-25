@@ -631,7 +631,7 @@ function showStep(index) {
     const row = trace[current];
 
     $("stepLabel").textContent =
-        `Instruction ${current + 1} из ${trace.length}`;
+        `Instruction ${current + 1} of ${trace.length}`;
 
     $("cycleLabel").textContent =
         `Cycles: ${row.before.cycles} → ${row.after.cycles}`;
